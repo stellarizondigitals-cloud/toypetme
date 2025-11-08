@@ -1,8 +1,10 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPetSchema, signupSchema, loginSchema, type User } from "@shared/schema";
+import { insertPetSchema, signupSchema, loginSchema, requestResetSchema, resetPasswordSchema, type User } from "@shared/schema";
 import bcrypt from "bcryptjs";
+import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import rateLimit from "express-rate-limit";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to calculate stat decay
@@ -38,6 +40,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // Rate limiting for authentication routes
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 requests per window
+    message: { error: "Too many attempts, please try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // ===== AUTHENTICATION ROUTES =====
   
   // Signup
@@ -64,8 +75,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create user (local auth type)
+      // Create user (local auth type, unverified)
       const user = await storage.createUser(username, email, passwordHash, "local");
+
+      // Generate verification token (24 hour expiry)
+      const verificationToken = generateToken();
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      await storage.setVerificationToken(user.id, verificationToken, tokenExpiry);
+
+      // Send verification email (async, don't wait)
+      sendVerificationEmail(email, username, verificationToken).catch(err => {
+        console.error("Failed to send verification email:", err);
+      });
 
       // Create default pet for the user
       await storage.createPet({
@@ -183,6 +204,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Email verification
+  app.get("/api/auth/verify", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: "Invalid verification token" });
+      }
+
+      // Find user by verification token
+      const user = await storage.getUserByVerificationToken(token);
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired verification token" });
+      }
+
+      // Check if token is expired
+      if (user.verificationTokenExpiry && new Date() > user.verificationTokenExpiry) {
+        return res.status(400).json({ error: "Verification token has expired" });
+      }
+
+      // Verify user
+      await storage.verifyUser(user.id);
+
+      res.json({ message: "Email verified successfully! You can now log in." });
+    } catch (error) {
+      console.error("Verification error:", error);
+      res.status(500).json({ error: "Failed to verify email" });
+    }
+  });
+
+  // Request password reset
+  app.post("/api/auth/request-reset", authLimiter, async (req, res) => {
+    try {
+      const validation = requestResetSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { email } = validation.data;
+
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success even if user doesn't exist (security best practice)
+      if (!user) {
+        return res.json({ message: "If that email exists, a password reset link has been sent" });
+      }
+
+      // Check if user uses Google OAuth
+      if (user.authType === 'google') {
+        return res.json({ message: "If that email exists, a password reset link has been sent" });
+      }
+
+      // Generate reset token (15 minute expiry)
+      const resetToken = generateToken();
+      const tokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await storage.setResetToken(user.id, resetToken, tokenExpiry);
+
+      // Send reset email (async, don't wait)
+      sendPasswordResetEmail(email, user.username, resetToken).catch(err => {
+        console.error("Failed to send password reset email:", err);
+      });
+
+      res.json({ message: "If that email exists, a password reset link has been sent" });
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  // Reset password with token
+  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+    try {
+      const validation = resetPasswordSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { token, password } = validation.data;
+
+      // Find user by reset token
+      const user = await storage.getUserByResetToken(token);
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+
+      // Check if token is expired
+      if (user.resetTokenExpiry && new Date() > user.resetTokenExpiry) {
+        return res.status(400).json({ error: "Reset token has expired" });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Update password and clear reset token
+      await storage.resetPassword(user.id, passwordHash);
+
+      res.json({ message: "Password reset successfully! You can now log in with your new password." });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 
