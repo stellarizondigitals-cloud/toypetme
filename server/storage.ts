@@ -13,7 +13,8 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(username: string, email: string, passwordHash: string): Promise<User>;
   updateUserCoins(userId: string, coins: number, gems: number): Promise<User>;
   claimDailyReward(userId: string): Promise<User>;
   
@@ -103,11 +104,19 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email,
+    );
+  }
+
+  async createUser(username: string, email: string, passwordHash: string): Promise<User> {
     const id = randomUUID();
     const user: User = { 
-      ...insertUser,
       id,
+      username,
+      email,
+      passwordHash,
       coins: 100,
       gems: 0,
       dailyStreak: 0,

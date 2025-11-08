@@ -3,10 +3,12 @@ import { pgTable, text, varchar, integer, timestamp, boolean } from "drizzle-orm
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User profile with currency
+// User profile with currency and authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
   coins: integer("coins").notNull().default(100),
   gems: integer("gems").notNull().default(0),
   dailyStreak: integer("daily_streak").notNull().default(0),
@@ -53,6 +55,19 @@ export const inventory = pgTable("inventory", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  passwordHash: true,
+});
+
+// Auth schemas
+export const signupSchema = z.object({
+  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const insertPetSchema = createInsertSchema(pets).omit({
@@ -72,6 +87,8 @@ export const insertInventorySchema = createInsertSchema(inventory).omit({
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type SignupData = z.infer<typeof signupSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
 
 export type InsertPet = z.infer<typeof insertPetSchema>;
 export type Pet = typeof pets.$inferSelect;
