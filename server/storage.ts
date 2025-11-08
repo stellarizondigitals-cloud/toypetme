@@ -14,9 +14,15 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(username: string, email: string, passwordHash: string): Promise<User>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  createUser(username: string, email: string, passwordHash: string | null, authType?: string): Promise<User>;
   updateUserCoins(userId: string, coins: number, gems: number): Promise<User>;
   claimDailyReward(userId: string): Promise<User>;
+  setVerificationToken(userId: string, token: string, expiry: Date): Promise<User>;
+  verifyUser(userId: string): Promise<User>;
+  setResetToken(userId: string, token: string, expiry: Date): Promise<User>;
+  resetPassword(userId: string, passwordHash: string): Promise<User>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -110,13 +116,31 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(username: string, email: string, passwordHash: string): Promise<User> {
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.verificationToken === token,
+    );
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.resetToken === token,
+    );
+  }
+
+  async createUser(username: string, email: string, passwordHash: string | null, authType: string = "local"): Promise<User> {
     const id = randomUUID();
     const user: User = { 
       id,
       username,
       email,
       passwordHash,
+      verified: authType === "google", // Google users are auto-verified
+      authType,
+      verificationToken: null,
+      verificationTokenExpiry: null,
+      resetToken: null,
+      resetTokenExpiry: null,
       coins: 100,
       gems: 0,
       dailyStreak: 0,
@@ -124,6 +148,44 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.users.set(id, user);
+    return user;
+  }
+
+  async setVerificationToken(userId: string, token: string, expiry: Date): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.verificationToken = token;
+    user.verificationTokenExpiry = expiry;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async verifyUser(userId: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.verified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpiry = null;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async setResetToken(userId: string, token: string, expiry: Date): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.resetToken = token;
+    user.resetTokenExpiry = expiry;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async resetPassword(userId: string, passwordHash: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.passwordHash = passwordHash;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    this.users.set(userId, user);
     return user;
   }
 

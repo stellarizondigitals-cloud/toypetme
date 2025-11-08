@@ -64,8 +64,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create user
-      const user = await storage.createUser(username, email, passwordHash);
+      // Create user (local auth type)
+      const user = await storage.createUser(username, email, passwordHash, "local");
 
       // Create default pet for the user
       await storage.createPet({
