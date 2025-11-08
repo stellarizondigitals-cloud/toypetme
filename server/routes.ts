@@ -117,6 +117,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
+      // Check if user has a password (local auth only)
+      if (!user.passwordHash) {
+        return res.status(401).json({ error: "Please use Google sign-in for this account" });
+      }
+
       // Verify password
       const isValid = await bcrypt.compare(password, user.passwordHash);
       if (!isValid) {
