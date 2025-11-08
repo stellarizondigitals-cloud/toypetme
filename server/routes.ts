@@ -1,7 +1,8 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPetSchema } from "@shared/schema";
+import { insertPetSchema, signupSchema, loginSchema, type User } from "@shared/schema";
+import bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to calculate stat decay
@@ -29,107 +30,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return "neutral";
   };
 
-  // Initialize demo user, pet, and shop items if none exist
-  const initDemoData = async () => {
-    const existingUser = await storage.getUserByUsername("demo");
-    if (!existingUser) {
-      const user = await storage.createUser({ username: "demo" });
+  // Middleware to check if user is authenticated
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    next();
+  };
+
+  // ===== AUTHENTICATION ROUTES =====
+  
+  // Signup
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const validation = signupSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { username, email, password } = validation.data;
+
+      // Check if user already exists
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = await storage.createUser(username, email, passwordHash);
+
+      // Create default pet for the user
       await storage.createPet({
         userId: user.id,
         name: "Fluffy",
       });
+
+      // Set session
+      req.session.userId = user.id;
+
+      // Return user without password
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ error: "Failed to create account" });
     }
+  });
 
-    // Initialize shop items if none exist
-    const existingItems = await storage.getAllShopItems();
-    if (existingItems.length === 0) {
-      // Food items
-      await storage.createShopItem({
-        name: "Apple",
-        description: "A juicy red apple that fills your pet's belly",
-        category: "food",
-        price: 10,
-        effect: JSON.stringify({ hunger: 15 }),
-        image: "🍎",
-      });
-      await storage.createShopItem({
-        name: "Cookie",
-        description: "Sweet treat that makes your pet happy",
-        category: "food",
-        price: 20,
-        effect: JSON.stringify({ hunger: 10, happiness: 10 }),
-        image: "🍪",
-      });
-      await storage.createShopItem({
-        name: "Pizza Slice",
-        description: "Delicious pizza that satisfies hunger",
-        category: "food",
-        price: 30,
-        effect: JSON.stringify({ hunger: 25, happiness: 5 }),
-        image: "🍕",
-      });
-
-      // Toys
-      await storage.createShopItem({
-        name: "Ball",
-        description: "A bouncy ball for playtime fun",
-        category: "toy",
-        price: 25,
-        effect: JSON.stringify({ happiness: 20 }),
-        image: "⚽",
-      });
-      await storage.createShopItem({
-        name: "Teddy Bear",
-        description: "Cuddly companion that brings comfort",
-        category: "toy",
-        price: 40,
-        effect: JSON.stringify({ happiness: 15, energy: 10 }),
-        image: "🧸",
-      });
-
-      // Care items
-      await storage.createShopItem({
-        name: "Soap",
-        description: "Keeps your pet squeaky clean",
-        category: "care",
-        price: 15,
-        effect: JSON.stringify({ cleanliness: 30 }),
-        image: "🧼",
-      });
-      await storage.createShopItem({
-        name: "Energy Drink",
-        description: "Restores energy quickly",
-        category: "care",
-        price: 35,
-        effect: JSON.stringify({ energy: 40 }),
-        image: "⚡",
-      });
-    }
-  };
-  await initDemoData();
-
-  // Get current user (demo for now)
-  app.get("/api/user", async (req, res) => {
+  // Login
+  app.post("/api/auth/login", async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
+      const validation = loginSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { email, password } = validation.data;
+
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Verify password
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      // Return user without password
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
+  // Logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  // Get current user
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      res.json(user);
+
+      // Return user without password
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // Get current user
+  app.get("/api/user", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Return user without password
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
   // Get pet with decay applied
-  app.get("/api/pet", async (req, res) => {
+  app.get("/api/pet", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(req.session.userId!);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -158,14 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Feed pet
-  app.post("/api/pet/feed", async (req, res) => {
+  app.post("/api/pet/feed", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(req.session.userId!);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -183,14 +217,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Play with pet
-  app.post("/api/pet/play", async (req, res) => {
+  app.post("/api/pet/play", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(req.session.userId!);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -209,14 +238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Clean pet
-  app.post("/api/pet/clean", async (req, res) => {
+  app.post("/api/pet/clean", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(req.session.userId!);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -234,14 +258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pet sleep
-  app.post("/api/pet/sleep", async (req, res) => {
+  app.post("/api/pet/sleep", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(req.session.userId!);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -269,14 +288,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Buy item
-  app.post("/api/shop/buy", async (req, res) => {
+  app.post("/api/shop/buy", requireAuth, async (req, res) => {
     try {
       const { itemId } = req.body;
       if (!itemId) {
         return res.status(400).json({ error: "Item ID required" });
       }
 
-      const user = await storage.getUserByUsername("demo");
+      const user = await storage.getUser(req.session.userId!);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -301,29 +320,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Use inventory item
-  app.post("/api/inventory/use", async (req, res) => {
+  app.post("/api/inventory/use", requireAuth, async (req, res) => {
     try {
       const { itemId } = req.body;
       if (!itemId) {
         return res.status(400).json({ error: "Item ID required" });
       }
 
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
+      const userId = req.session.userId!;
 
       const item = await storage.getShopItem(itemId);
       if (!item) {
         return res.status(404).json({ error: "Item not found" });
       }
 
-      const inventoryItem = await storage.useInventoryItem(user.id, itemId);
+      const inventoryItem = await storage.useInventoryItem(userId, itemId);
       if (!inventoryItem) {
         return res.status(400).json({ error: "Item not in inventory" });
       }
 
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -347,21 +363,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       pet = await storage.updatePetStats(pet.id, updatedStats);
 
-      res.json({ pet, inventory: await storage.getUserInventory(user.id) });
+      res.json({ pet, inventory: await storage.getUserInventory(userId) });
     } catch (error) {
       res.status(500).json({ error: "Failed to use item" });
     }
   });
 
   // Get user inventory with item details
-  app.get("/api/inventory", async (req, res) => {
+  app.get("/api/inventory", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      const inventory = await storage.getUserInventory(user.id);
+      const inventory = await storage.getUserInventory(req.session.userId!);
       
       // Enrich inventory with shop item details
       const enrichedInventory = await Promise.all(
@@ -378,9 +389,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Claim daily reward
-  app.post("/api/daily-reward", async (req, res) => {
+  app.post("/api/daily-reward", requireAuth, async (req, res) => {
     try {
-      const user = await storage.getUserByUsername("demo");
+      const user = await storage.getUser(req.session.userId!);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -401,19 +412,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete mini-game and award rewards
-  app.post("/api/minigame/reward", async (req, res) => {
+  app.post("/api/minigame/reward", requireAuth, async (req, res) => {
     try {
       const { score } = req.body;
       if (typeof score !== "number" || score < 0) {
         return res.status(400).json({ error: "Valid score required" });
       }
 
-      const user = await storage.getUserByUsername("demo");
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      let pet = await storage.getPetByUserId(user.id);
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }

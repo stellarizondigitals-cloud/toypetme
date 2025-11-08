@@ -1,8 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import memorystore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+const MemoryStore = memorystore(session);
+
+app.use(
+  session({
+    cookie: { maxAge: 86400000 },
+    store: new MemoryStore({
+      checkPeriod: 86400000,
+    }),
+    resave: false,
+    secret: process.env.SESSION_SECRET || "toypetme-secret-key-change-in-production",
+    saveUninitialized: false,
+  })
+);
+
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+  }
+}
 
 declare module 'http' {
   interface IncomingMessage {
