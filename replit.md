@@ -8,10 +8,18 @@ The project is built as a full-stack web application optimized for mobile device
 
 ## Recent Changes
 
+**November 8, 2025 - Production Email System Fully Operational**
+- Resend email service configured with custom domain (toypetme.com)
+- DNS records (SPF, DKIM, MX) configured at IONOS and verified
+- Email sending from: ToyPetMe <noreply@toypetme.com>
+- Environment secrets configured: EMAIL_API_KEY, EMAIL_SENDER, FRONTEND_URL
+- Real email delivery confirmed and tested successfully
+- Verification links now use correct production URL
+
 **November 8, 2025 - Phase 1 Authentication Upgrade Complete**
 - Email verification system with 24-hour token expiry
 - Password reset flow with 15-minute secure tokens
-- Email service integration with Resend (dev mode: logs to console)
+- Email service integration with Resend (automatic dev/production mode switching)
 - Rate limiting on auth endpoints (5 requests per 15 minutes)
 - Email verification banner for unverified users
 - Resend verification email functionality
