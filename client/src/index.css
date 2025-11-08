@@ -173,6 +173,38 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes float-up {
+    0% {
+      transform: translateY(0) scale(0.8);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-60px) scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 2s ease-in-out infinite;
+  }
+
+  .animate-float-up {
+    animation: float-up 1.5s ease-out forwards;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /**
