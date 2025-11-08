@@ -8,6 +8,17 @@ The project is built as a full-stack web application optimized for mobile device
 
 ## Recent Changes
 
+**November 8, 2025 - Phase 1 Authentication Upgrade Complete**
+- Email verification system with 24-hour token expiry
+- Password reset flow with 15-minute secure tokens
+- Email service integration with Resend (dev mode: logs to console)
+- Rate limiting on auth endpoints (5 requests per 15 minutes)
+- Email verification banner for unverified users
+- Resend verification email functionality
+- Dedicated routes: /verify, /forgot-password, /reset-password
+- Professional HTML email templates for verification and password reset
+- All flows tested end-to-end and fully functional
+
 **November 8, 2025 - Authentication System Implemented**
 - Complete session-based authentication with email/password
 - Secure signup/login/logout flows with session regeneration (prevents session fixation attacks)
@@ -51,7 +62,11 @@ Preferred communication style: Simple, everyday language.
 - Component examples directory for development reference
 
 **Key Features:**
-- **Authentication:** Email/password signup and login with form validation
+- **Authentication:** 
+  - Email/password signup and login with form validation
+  - Email verification system with resend capability
+  - Password reset flow with secure token-based reset
+  - Verification banner for unverified users
 - **Protected Routes:** All game pages require authentication, redirect to login if not signed in
 - **User Profile:** Display username, email, join date, and game stats with logout option
 - **Virtual Pet Care:** Interaction with mood states (happy, neutral, sad, sleeping)
@@ -96,7 +111,15 @@ Preferred communication style: Simple, everyday language.
 - Auto-increment integer IDs for all entities
 
 **API Routes:**
-- **Auth:** POST /api/auth/signup, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me
+- **Auth:** 
+  - POST /api/auth/signup (generates verification token, sends email)
+  - POST /api/auth/login
+  - POST /api/auth/logout
+  - GET /api/auth/me
+  - GET /api/auth/verify (validates verification token)
+  - POST /api/auth/resend-verification (resends verification email)
+  - POST /api/auth/request-reset (initiates password reset)
+  - POST /api/auth/reset-password (completes password reset)
 - **User:** GET /api/user (protected)
 - **Pet:** GET /api/pet, POST /api/pet/feed, POST /api/pet/play, POST /api/pet/clean, POST /api/pet/sleep (all protected)
 - **Shop:** GET /api/shop/items (protected)
