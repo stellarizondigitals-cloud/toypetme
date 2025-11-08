@@ -29,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return "neutral";
   };
 
-  // Initialize demo user and pet if none exist
+  // Initialize demo user, pet, and shop items if none exist
   const initDemoData = async () => {
     const existingUser = await storage.getUserByUsername("demo");
     if (!existingUser) {
@@ -37,6 +37,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createPet({
         userId: user.id,
         name: "Fluffy",
+      });
+    }
+
+    // Initialize shop items if none exist
+    const existingItems = await storage.getAllShopItems();
+    if (existingItems.length === 0) {
+      // Food items
+      await storage.createShopItem({
+        name: "Apple",
+        description: "A juicy red apple that fills your pet's belly",
+        category: "food",
+        price: 10,
+        effect: JSON.stringify({ hunger: 15 }),
+        image: "🍎",
+      });
+      await storage.createShopItem({
+        name: "Cookie",
+        description: "Sweet treat that makes your pet happy",
+        category: "food",
+        price: 20,
+        effect: JSON.stringify({ hunger: 10, happiness: 10 }),
+        image: "🍪",
+      });
+      await storage.createShopItem({
+        name: "Pizza Slice",
+        description: "Delicious pizza that satisfies hunger",
+        category: "food",
+        price: 30,
+        effect: JSON.stringify({ hunger: 25, happiness: 5 }),
+        image: "🍕",
+      });
+
+      // Toys
+      await storage.createShopItem({
+        name: "Ball",
+        description: "A bouncy ball for playtime fun",
+        category: "toy",
+        price: 25,
+        effect: JSON.stringify({ happiness: 20 }),
+        image: "⚽",
+      });
+      await storage.createShopItem({
+        name: "Teddy Bear",
+        description: "Cuddly companion that brings comfort",
+        category: "toy",
+        price: 40,
+        effect: JSON.stringify({ happiness: 15, energy: 10 }),
+        image: "🧸",
+      });
+
+      // Care items
+      await storage.createShopItem({
+        name: "Soap",
+        description: "Keeps your pet squeaky clean",
+        category: "care",
+        price: 15,
+        effect: JSON.stringify({ cleanliness: 30 }),
+        image: "🧼",
+      });
+      await storage.createShopItem({
+        name: "Energy Drink",
+        description: "Restores energy quickly",
+        category: "care",
+        price: 35,
+        effect: JSON.stringify({ energy: 40 }),
+        image: "⚡",
       });
     }
   };
@@ -262,9 +328,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      // Apply item effects
-      const effects = JSON.parse(item.effect);
-      pet = await storage.updatePetStats(pet.id, effects);
+      // Apply item effects as deltas (additions to current stats)
+      const effects = JSON.parse(item.effect) as Record<string, number>;
+      const updatedStats: Record<string, number> = {};
+      
+      if (effects.hunger !== undefined) {
+        updatedStats.hunger = Math.min(100, pet.hunger + effects.hunger);
+      }
+      if (effects.happiness !== undefined) {
+        updatedStats.happiness = Math.min(100, pet.happiness + effects.happiness);
+      }
+      if (effects.energy !== undefined) {
+        updatedStats.energy = Math.min(100, pet.energy + effects.energy);
+      }
+      if (effects.cleanliness !== undefined) {
+        updatedStats.cleanliness = Math.min(100, pet.cleanliness + effects.cleanliness);
+      }
+
+      pet = await storage.updatePetStats(pet.id, updatedStats);
 
       res.json({ pet, inventory: await storage.getUserInventory(user.id) });
     } catch (error) {

@@ -1,16 +1,15 @@
-import { Home, Gamepad2, ShoppingBag, Users, User } from "lucide-react";
+import { Home, ShoppingBag, Package, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useLocation } from "wouter";
 
 export default function BottomTabNav() {
-  const [activeTab, setActiveTab] = useState("home");
+  const [location, setLocation] = useLocation();
 
   const tabs = [
-    { id: "home", icon: Home, label: "Home" },
-    { id: "games", icon: Gamepad2, label: "Games" },
-    { id: "shop", icon: ShoppingBag, label: "Shop" },
-    { id: "friends", icon: Users, label: "Friends" },
-    { id: "profile", icon: User, label: "Me" },
+    { id: "home", icon: Home, label: "Home", path: "/" },
+    { id: "shop", icon: ShoppingBag, label: "Shop", path: "/shop" },
+    { id: "inventory", icon: Package, label: "Items", path: "/inventory" },
+    { id: "games", icon: Gamepad2, label: "Games", path: "/game" },
   ];
 
   return (
@@ -22,12 +21,9 @@ export default function BottomTabNav() {
               key={tab.id}
               variant="ghost"
               className={`flex-1 flex flex-col items-center justify-center gap-1 h-full rounded-none ${
-                activeTab === tab.id ? "text-primary" : "text-muted-foreground"
+                location === tab.path ? "text-primary" : "text-muted-foreground"
               }`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                console.log(`${tab.label} tab clicked`);
-              }}
+              onClick={() => setLocation(tab.path)}
               data-testid={`button-tab-${tab.id}`}
             >
               <tab.icon className="h-5 w-5" />

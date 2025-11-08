@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GameHome from "@/pages/GameHome";
 import MiniGame from "@/pages/MiniGame";
+import Shop from "@/pages/Shop";
+import Inventory from "@/pages/Inventory";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +14,8 @@ function Router() {
     <Switch>
       <Route path="/" component={GameHome} />
       <Route path="/game" component={MiniGame} />
+      <Route path="/shop" component={Shop} />
+      <Route path="/inventory" component={Inventory} />
       <Route component={NotFound} />
     </Switch>
   );
