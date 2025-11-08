@@ -136,16 +136,22 @@ export class MemStorage implements IStorage {
     
     if (lastReward) {
       const hoursSince = (now.getTime() - lastReward.getTime()) / (1000 * 60 * 60);
-      if (hoursSince < 20) {
+      // Increment streak if claimed within 20-48 hours (maintains streak)
+      if (hoursSince >= 20 && hoursSince <= 48) {
         user.dailyStreak += 1;
-      } else if (hoursSince > 48) {
+      } 
+      // Reset streak if more than 48 hours have passed
+      else if (hoursSince > 48) {
         user.dailyStreak = 1;
       }
+      // If less than 20 hours, API should reject this before we get here
     } else {
+      // First time claiming
       user.dailyStreak = 1;
     }
     
-    user.coins += 50 + (user.dailyStreak * 10);
+    const coinsEarned = 50 + (user.dailyStreak * 10);
+    user.coins += coinsEarned;
     user.lastDailyReward = now;
     this.users.set(userId, user);
     return user;

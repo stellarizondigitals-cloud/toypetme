@@ -1,13 +1,60 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Gift, Calendar, Trophy, Star } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QuickActions() {
+  const { toast } = useToast();
+
+  const dailyRewardMutation = useMutation({
+    mutationFn: () => apiRequest("/api/daily-reward", "POST"),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: "Daily Reward Claimed!",
+        description: `+${50 + (data.dailyStreak * 10)} coins! Streak: ${data.dailyStreak} days`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Already Claimed",
+        description: "Come back tomorrow for your next reward!",
+        variant: "destructive",
+      });
+    },
+  });
+
   const actions = [
-    { icon: Gift, label: "Daily Gift", color: "text-pink-500", testId: "button-daily-gift" },
-    { icon: Calendar, label: "Streak", color: "text-blue-500", testId: "button-streak" },
-    { icon: Trophy, label: "Quests", color: "text-yellow-500", testId: "button-quests" },
-    { icon: Star, label: "Rewards", color: "text-purple-500", testId: "button-rewards" },
+    { 
+      icon: Gift, 
+      label: "Daily Gift", 
+      color: "text-pink-500", 
+      testId: "button-daily-gift",
+      onClick: () => dailyRewardMutation.mutate()
+    },
+    { 
+      icon: Calendar, 
+      label: "Streak", 
+      color: "text-blue-500", 
+      testId: "button-streak",
+      onClick: () => toast({ title: "Coming soon!", description: "Streak calendar feature" })
+    },
+    { 
+      icon: Trophy, 
+      label: "Quests", 
+      color: "text-yellow-500", 
+      testId: "button-quests",
+      onClick: () => toast({ title: "Coming soon!", description: "Daily quests feature" })
+    },
+    { 
+      icon: Star, 
+      label: "Rewards", 
+      color: "text-purple-500", 
+      testId: "button-rewards",
+      onClick: () => toast({ title: "Coming soon!", description: "Rewards catalog" })
+    },
   ];
 
   return (
@@ -18,7 +65,7 @@ export default function QuickActions() {
             key={action.label}
             variant="ghost"
             className="flex flex-col items-center gap-2 h-auto py-3 hover-elevate"
-            onClick={() => console.log(`${action.label} clicked`)}
+            onClick={action.onClick}
             data-testid={action.testId}
           >
             <action.icon className={`w-6 h-6 ${action.color}`} />
