@@ -1,21 +1,59 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GameHome from "@/pages/GameHome";
 import MiniGame from "@/pages/MiniGame";
 import Shop from "@/pages/Shop";
 import Inventory from "@/pages/Inventory";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
+import type { User } from "@shared/schema";
+
+function ProtectedRoute({ component: Component }: { component: () => JSX.Element }): JSX.Element {
+  const { data: user, isLoading } = useQuery<User>({
+    queryKey: ["/api/auth/me"],
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+        <p className="text-lg text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  return <Component />;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={GameHome} />
-      <Route path="/game" component={MiniGame} />
-      <Route path="/shop" component={Shop} />
-      <Route path="/inventory" component={Inventory} />
+      <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/">
+        {() => <ProtectedRoute component={GameHome} />}
+      </Route>
+      <Route path="/game">
+        {() => <ProtectedRoute component={MiniGame} />}
+      </Route>
+      <Route path="/shop">
+        {() => <ProtectedRoute component={Shop} />}
+      </Route>
+      <Route path="/inventory">
+        {() => <ProtectedRoute component={Inventory} />}
+      </Route>
+      <Route path="/profile">
+        {() => <ProtectedRoute component={Profile} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
