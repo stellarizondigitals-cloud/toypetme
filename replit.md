@@ -4,7 +4,18 @@
 
 ToyPetMe is a mobile-first virtual pet game inspired by Tamagotchi, Neko Atsume, and idle games like Pokémon Smile. The application provides a delightful, stress-free experience where users care for virtual pets through feeding, playing, cleaning, and rest activities. The game features a stat-based progression system, mini-games, rewards, and social elements.
 
-The project is built as a full-stack web application optimized for mobile devices, with a pet care interface, marketplace functionality, and game mechanics.
+The project is built as a full-stack web application optimized for mobile devices, with a pet care interface, marketplace functionality, and game mechanics. Users must create an account to play, ensuring their pet progress is saved and protected.
+
+## Recent Changes
+
+**November 8, 2025 - Authentication System Implemented**
+- Complete session-based authentication with email/password
+- Secure signup/login/logout flows with session regeneration (prevents session fixation attacks)
+- Protected routes requiring authentication for all game features
+- User profile page with account details and logout functionality
+- Bottom navigation extended to 5 tabs (Home, Shop, Items, Games, Profile)
+- Default pet "Fluffy" created automatically for new users
+- Multi-user support throughout backend (replaced demo user approach)
 
 ## User Preferences
 
@@ -34,21 +45,31 @@ Preferred communication style: Simple, everyday language.
 - Atomic design approach with reusable UI primitives
 - Game-specific components (PetDisplay, StatsPanel, ActionButtons, GameHeader)
 - Marketplace components (ProductCard, CategorySection, Hero)
-- Navigation components (BottomTabNav for game, BottomNav for marketplace)
+- Navigation components (BottomTabNav with 5 tabs: Home, Shop, Items, Games, Profile)
+- Authentication components (Login, Signup, Profile pages)
+- Protected route wrapper (ProtectedRoute) with loading states
 - Component examples directory for development reference
 
 **Key Features:**
-- Virtual pet interaction with mood states (happy, neutral, sad, sleeping)
-- Real-time stat tracking (hunger, happiness, energy, cleanliness) with progress bars
-- Action-based gameplay (feed, play, clean, sleep)
-- Toast notifications for user feedback
-- Responsive layouts optimized for mobile and tablet viewports
+- **Authentication:** Email/password signup and login with form validation
+- **Protected Routes:** All game pages require authentication, redirect to login if not signed in
+- **User Profile:** Display username, email, join date, and game stats with logout option
+- **Virtual Pet Care:** Interaction with mood states (happy, neutral, sad, sleeping)
+- **Stat Tracking:** Real-time monitoring of hunger, happiness, energy, cleanliness with progress bars
+- **Action System:** Feed, play, clean, sleep actions with stat updates
+- **Shop System:** Purchase items with coins and gems
+- **Inventory Management:** View and use owned items
+- **Mini-games:** Ball Catch game with scoring and rewards
+- **Daily Rewards:** Streak tracking with escalating rewards
+- **Toast Notifications:** User feedback for all actions
+- **Responsive Design:** Mobile and tablet optimized layouts
 
 ### Backend Architecture
 
 **Technology Stack:**
 - **Runtime:** Node.js with TypeScript
 - **Framework:** Express.js for API routing
+- **Authentication:** express-session with bcryptjs password hashing
 - **Development Server:** TSX for hot-reloading in development
 - **Build Process:** ESBuild for production bundling
 
@@ -57,16 +78,35 @@ Preferred communication style: Simple, everyday language.
 - Request logging middleware with response time tracking
 - JSON body parsing with raw body preservation for webhooks
 - Vite integration in development for HMR and SSR capabilities
+- Session middleware with memory store (configured for PostgreSQL in production)
+
+**Authentication & Security:**
+- Session-based authentication (more secure than JWT for web apps)
+- Password hashing with bcryptjs (10 salt rounds)
+- Session regeneration on login/signup (prevents session fixation attacks)
+- Protected API routes via requireAuth middleware
+- Email uniqueness validation
+- Username uniqueness validation
 
 **Storage Layer:**
 - In-memory storage implementation (`MemStorage`) for development
 - Interface-based storage design (`IStorage`) for easy database migration
-- User management with CRUD operations
-- UUID-based entity identification
+- Multi-user support with user isolation
+- User management with CRUD operations (getUser, getUserByEmail, getUserByUsername, createUser)
+- Auto-increment integer IDs for all entities
+
+**API Routes:**
+- **Auth:** POST /api/auth/signup, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me
+- **User:** GET /api/user (protected)
+- **Pet:** GET /api/pet, POST /api/pet/feed, POST /api/pet/play, POST /api/pet/clean, POST /api/pet/sleep (all protected)
+- **Shop:** GET /api/shop/items (protected)
+- **Inventory:** GET /api/inventory, POST /api/inventory/use/:id (protected)
+- **Rewards:** POST /api/rewards/daily (protected)
+- **Mini-games:** POST /api/games/ball-catch/start, POST /api/games/ball-catch/end (protected)
 
 **Production Considerations:**
 - Designed for database migration (PostgreSQL via Drizzle ORM ready)
-- Session management prepared (connect-pg-simple included)
+- Session store configured to use connect-pg-simple in production
 - Static file serving for production builds
 - Environment-based configuration
 
@@ -98,7 +138,10 @@ Preferred communication style: Simple, everyday language.
 **Notable Architecture Decisions:**
 - **Monorepo Structure:** Shared schema between client and server via `shared/` directory
 - **Type Safety:** Drizzle-Zod for runtime validation matching database schema
+- **Session-Based Auth:** Chosen over JWT for better security in web app context
+- **Session Fixation Protection:** Session regeneration on login/signup
 - **Mobile PWA Ready:** Manifest.json configured for installable web app experience
 - **Responsive Images:** Asset management through Vite aliases with optimized loading
 - **Accessibility:** Radix UI provides ARIA-compliant interactive components
 - **State Synchronization:** React Query for caching and optimistic updates preparation
+- **Multi-User Architecture:** User isolation at storage layer with per-user pets, inventories, and game progress
