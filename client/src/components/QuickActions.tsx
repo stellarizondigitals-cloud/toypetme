@@ -1,12 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Gift, Calendar, Trophy, Star } from "lucide-react";
+import { Gift, Calendar, Trophy, Gamepad2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function QuickActions() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const dailyRewardMutation = useMutation({
     mutationFn: () => apiRequest("/api/daily-reward", "POST"),
@@ -35,11 +37,11 @@ export default function QuickActions() {
       onClick: () => dailyRewardMutation.mutate()
     },
     { 
-      icon: Calendar, 
-      label: "Streak", 
+      icon: Gamepad2, 
+      label: "Play Game", 
       color: "text-blue-500", 
-      testId: "button-streak",
-      onClick: () => toast({ title: "Coming soon!", description: "Streak calendar feature" })
+      testId: "button-play-game",
+      onClick: () => setLocation("/game")
     },
     { 
       icon: Trophy, 
@@ -49,11 +51,11 @@ export default function QuickActions() {
       onClick: () => toast({ title: "Coming soon!", description: "Daily quests feature" })
     },
     { 
-      icon: Star, 
-      label: "Rewards", 
+      icon: Calendar, 
+      label: "Streak", 
       color: "text-purple-500", 
-      testId: "button-rewards",
-      onClick: () => toast({ title: "Coming soon!", description: "Rewards catalog" })
+      testId: "button-streak",
+      onClick: () => toast({ title: "Coming soon!", description: "Streak calendar feature" })
     },
   ];
 

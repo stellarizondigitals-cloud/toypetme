@@ -310,12 +310,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Complete mini-game
-  app.post("/api/minigame/complete", async (req, res) => {
+  // Complete mini-game and award rewards
+  app.post("/api/minigame/reward", async (req, res) => {
     try {
       const { score } = req.body;
-      if (typeof score !== "number") {
-        return res.status(400).json({ error: "Score required" });
+      if (typeof score !== "number" || score < 0) {
+        return res.status(400).json({ error: "Valid score required" });
       }
 
       const user = await storage.getUserByUsername("demo");
@@ -328,18 +328,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      // Award coins based on score
-      const coinsEarned = Math.floor(score / 10);
+      // Award coins based on score (1 coin per 2 points)
+      const coinsEarned = Math.floor(score / 2);
       const xpEarned = Math.floor(score / 5);
+      
+      // Award happiness (1 per 10 points, max 20)
+      const happinessGained = Math.min(20, Math.floor(score / 10));
 
       await storage.updateUserCoins(user.id, user.coins + coinsEarned, user.gems);
       pet = await storage.addPetXP(pet.id, xpEarned);
       pet = await storage.updatePetStats(pet.id, {
-        happiness: pet.happiness + 10,
+        happiness: Math.min(100, pet.happiness + happinessGained),
       });
 
-      const updatedUser = await storage.getUser(user.id);
-      res.json({ user: updatedUser, pet, coinsEarned, xpEarned });
+      res.json({ coinsEarned, happinessGained, xpEarned });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete mini-game" });
     }
