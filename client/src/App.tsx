@@ -10,6 +10,9 @@ import Inventory from "@/pages/Inventory";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Profile from "@/pages/Profile";
+import EmailVerification from "@/pages/EmailVerification";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import type { User } from "@shared/schema";
 
@@ -39,6 +42,9 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/verify" component={EmailVerification} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/">
         {() => <ProtectedRoute component={GameHome} />}
       </Route>

@@ -237,6 +237,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resend verification email
+  app.post("/api/auth/resend-verification", authLimiter, async (req, res) => {
+    try {
+      const validation = requestResetSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { email } = validation.data;
+
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.json({ message: "If that email exists and is unverified, a verification link has been sent" });
+      }
+
+      // Check if already verified
+      if (user.verified) {
+        return res.json({ message: "Email is already verified" });
+      }
+
+      // Generate new verification token (24 hour expiry)
+      const verificationToken = generateToken();
+      const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      await storage.setVerificationToken(user.id, verificationToken, tokenExpiry);
+
+      // Send verification email (async, don't wait)
+      sendVerificationEmail(email, user.username, verificationToken).catch(err => {
+        console.error("Failed to send verification email:", err);
+      });
+
+      res.json({ message: "Verification email sent! Check your inbox." });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ error: "Failed to resend verification email" });
+    }
+  });
+
   // Request password reset
   app.post("/api/auth/request-reset", authLimiter, async (req, res) => {
     try {

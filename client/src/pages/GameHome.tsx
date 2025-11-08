@@ -5,6 +5,7 @@ import StatsPanel from "@/components/StatsPanel";
 import ActionButtons from "@/components/ActionButtons";
 import QuickActions from "@/components/QuickActions";
 import BottomTabNav from "@/components/BottomTabNav";
+import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
@@ -117,6 +118,10 @@ export default function GameHome() {
       />
       
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {!user.verified && (
+          <EmailVerificationBanner userEmail={user.email} />
+        )}
+        
         <PetDisplay 
           name={pet.name} 
           level={pet.level} 
