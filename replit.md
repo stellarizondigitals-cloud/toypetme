@@ -8,6 +8,18 @@ The project is built as a full-stack web application optimized for mobile device
 
 ## Recent Changes
 
+**November 8, 2025 - Phase 2 Google OAuth Integration Complete**
+- Google OAuth authentication implemented using Passport.js
+- OAuth routes: GET /api/auth/google, GET /api/auth/google/callback
+- "Sign in with Google" buttons added to Login and Signup pages
+- Account linking: existing local users auto-upgrade when signing in with Google
+- Auto-verification: Google sign-ins automatically verify email address
+- Username generation from Google display name for new users
+- Error handling for missing Google OAuth credentials (returns 503)
+- Session regeneration on OAuth callback for security
+- Requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_CALLBACK_URL secrets
+- Architect-reviewed and approved (no security issues identified)
+
 **November 8, 2025 - Production Email System Fully Operational**
 - Resend email service configured with custom domain (toypetme.com)
 - DNS records (SPF, DKIM, MX) configured at IONOS and verified
@@ -72,7 +84,9 @@ Preferred communication style: Simple, everyday language.
 **Key Features:**
 - **Authentication:** 
   - Email/password signup and login with form validation
-  - Email verification system with resend capability
+  - Google OAuth sign-in (requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_CALLBACK_URL)
+  - Account linking: local accounts auto-upgrade to Google when signing in with same email
+  - Email verification system with resend capability (auto-verified for Google users)
   - Password reset flow with secure token-based reset
   - Verification banner for unverified users
 - **Protected Routes:** All game pages require authentication, redirect to login if not signed in
@@ -105,11 +119,15 @@ Preferred communication style: Simple, everyday language.
 
 **Authentication & Security:**
 - Session-based authentication (more secure than JWT for web apps)
-- Password hashing with bcryptjs (10 salt rounds)
+- Multiple auth methods: email/password (local) and Google OAuth
+- Passport.js for OAuth strategy management
+- Password hashing with bcryptjs (10 salt rounds) for local auth
 - Session regeneration on login/signup (prevents session fixation attacks)
 - Protected API routes via requireAuth middleware
 - Email uniqueness validation
 - Username uniqueness validation
+- Account linking: existing local users auto-upgrade when signing in with Google
+- Auto-verification for Google OAuth users
 
 **Storage Layer:**
 - In-memory storage implementation (`MemStorage`) for development
@@ -123,6 +141,8 @@ Preferred communication style: Simple, everyday language.
   - POST /api/auth/signup (generates verification token, sends email)
   - POST /api/auth/login
   - POST /api/auth/logout
+  - GET /api/auth/google (initiates Google OAuth flow)
+  - GET /api/auth/google/callback (handles Google OAuth callback)
   - GET /api/auth/me
   - GET /api/auth/verify (validates verification token)
   - POST /api/auth/resend-verification (resends verification email)
