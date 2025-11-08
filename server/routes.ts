@@ -5,6 +5,7 @@ import { insertPetSchema, signupSchema, loginSchema, requestResetSchema, resetPa
 import bcrypt from "bcryptjs";
 import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
+import passport from "passport";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to calculate stat decay
@@ -349,6 +350,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
+
+  // Google OAuth - Initiate
+  app.get("/api/auth/google", (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({ error: "Google OAuth is not configured" });
+    }
+    passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  });
+
+  // Google OAuth - Callback
+  app.get("/api/auth/google/callback", (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.redirect("/login?error=oauth_not_configured");
+    }
+    passport.authenticate("google", { failureRedirect: "/login" })(req, res, next);
+  }, (req, res) => {
+      // Regenerate session for security
+      const user = req.user as User;
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error("Session regeneration error:", err);
+          return res.redirect("/login?error=session");
+        }
+
+        req.session.userId = user.id;
+
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.redirect("/login?error=session");
+          }
+
+          res.redirect("/");
+        });
+      });
+    }
+  );
 
   // Get current user
   app.get("/api/user", requireAuth, async (req, res) => {

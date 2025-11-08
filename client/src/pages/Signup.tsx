@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { FcGoogle } from "react-icons/fc";
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -137,22 +138,43 @@ export default function Signup() {
               >
                 {signupMutation.isPending ? "Creating account..." : "Sign Up"}
               </Button>
-
-              <div className="text-center text-sm">
-                <span className="text-muted-foreground">
-                  Already have an account?{" "}
-                </span>
-                <button
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => setLocation("/login")}
-                  data-testid="link-login"
-                >
-                  Log in
-                </button>
-              </div>
             </form>
           </Form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => window.location.href = "/api/auth/google"}
+            data-testid="button-google-signup"
+          >
+            <FcGoogle className="mr-2 h-5 w-5" />
+            Sign up with Google
+          </Button>
+
+          <div className="text-center text-sm mt-4">
+            <span className="text-muted-foreground">
+              Already have an account?{" "}
+            </span>
+            <button
+              type="button"
+              className="text-primary hover:underline"
+              onClick={() => setLocation("/login")}
+              data-testid="link-login"
+            >
+              Log in
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>

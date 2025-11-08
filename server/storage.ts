@@ -23,6 +23,8 @@ export interface IStorage {
   verifyUser(userId: string): Promise<User>;
   setResetToken(userId: string, token: string, expiry: Date): Promise<User>;
   resetPassword(userId: string, passwordHash: string): Promise<User>;
+  updateUserAuthType(userId: string, authType: string): Promise<User>;
+  markEmailVerified(userId: string): Promise<User>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -185,6 +187,22 @@ export class MemStorage implements IStorage {
     user.passwordHash = passwordHash;
     user.resetToken = null;
     user.resetTokenExpiry = null;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async updateUserAuthType(userId: string, authType: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.authType = authType;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async markEmailVerified(userId: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.verified = true;
     this.users.set(userId, user);
     return user;
   }
