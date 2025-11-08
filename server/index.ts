@@ -10,7 +10,12 @@ const MemoryStore = memorystore(session);
 
 app.use(
   session({
-    cookie: { maxAge: 86400000 },
+    cookie: { 
+      maxAge: 86400000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    },
     store: new MemoryStore({
       checkPeriod: 86400000,
     }),
