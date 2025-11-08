@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user inventory
+  // Get user inventory with item details
   app.get("/api/inventory", async (req, res) => {
     try {
       const user = await storage.getUserByUsername("demo");
@@ -362,7 +362,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const inventory = await storage.getUserInventory(user.id);
-      res.json(inventory);
+      
+      // Enrich inventory with shop item details
+      const enrichedInventory = await Promise.all(
+        inventory.map(async (invItem) => {
+          const item = await storage.getShopItem(invItem.itemId);
+          return { ...invItem, item };
+        })
+      );
+
+      res.json(enrichedInventory);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch inventory" });
     }

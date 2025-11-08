@@ -21,7 +21,7 @@ export default function Shop() {
 
   const buyMutation = useMutation({
     mutationFn: (itemId: string) =>
-      apiRequest("/api/shop/buy", "POST", { itemId }),
+      apiRequest("POST", "/api/shop/buy", { itemId }),
     onSuccess: (_, itemId) => {
       const item = shopItems.find((i) => i.id === itemId);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });

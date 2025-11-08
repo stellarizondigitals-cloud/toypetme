@@ -27,7 +27,7 @@ export default function GameHome() {
 
   // Feed mutation
   const feedMutation = useMutation({
-    mutationFn: () => apiRequest("/api/pet/feed", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/pet/feed"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -40,7 +40,7 @@ export default function GameHome() {
 
   // Play mutation
   const playMutation = useMutation({
-    mutationFn: () => apiRequest("/api/pet/play", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/pet/play"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -53,7 +53,7 @@ export default function GameHome() {
 
   // Clean mutation
   const cleanMutation = useMutation({
-    mutationFn: () => apiRequest("/api/pet/clean", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/pet/clean"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -66,7 +66,7 @@ export default function GameHome() {
 
   // Sleep mutation
   const sleepMutation = useMutation({
-    mutationFn: () => apiRequest("/api/pet/sleep", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/pet/sleep"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });

@@ -29,7 +29,7 @@ export default function MiniGame() {
 
   const rewardMutation = useMutation({
     mutationFn: (score: number) => 
-      apiRequest("/api/minigame/reward", "POST", { score }),
+      apiRequest("POST", "/api/minigame/reward", { score }),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });

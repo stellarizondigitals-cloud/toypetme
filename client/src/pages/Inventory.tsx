@@ -23,7 +23,7 @@ export default function Inventory() {
 
   const useItemMutation = useMutation({
     mutationFn: (itemId: string) =>
-      apiRequest("/api/inventory/use", "POST", { itemId }),
+      apiRequest("POST", "/api/inventory/use", { itemId }),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
