@@ -8,7 +8,13 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"), // Nullable for Google OAuth users
+  verified: boolean("verified").notNull().default(false),
+  authType: text("auth_type").notNull().default("local"), // "local" or "google"
+  verificationToken: text("verification_token"),
+  verificationTokenExpiry: timestamp("verification_token_expiry"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   coins: integer("coins").notNull().default(100),
   gems: integer("gems").notNull().default(0),
   dailyStreak: integer("daily_streak").notNull().default(0),
@@ -70,6 +76,15 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const requestResetSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const insertPetSchema = createInsertSchema(pets).omit({
   id: true,
   lastUpdated: true,
@@ -89,6 +104,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type SignupData = z.infer<typeof signupSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
+export type RequestResetData = z.infer<typeof requestResetSchema>;
+export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 
 export type InsertPet = z.infer<typeof insertPetSchema>;
 export type Pet = typeof pets.$inferSelect;

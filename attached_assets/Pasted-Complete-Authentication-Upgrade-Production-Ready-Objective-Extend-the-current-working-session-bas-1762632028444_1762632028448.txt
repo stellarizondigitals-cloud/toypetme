@@ -1,0 +1,93 @@
+Complete Authentication Upgrade (Production‑Ready)
+Objective:
+Extend the current working session‑based authentication system to include Google OAuth Login, Email Verification, and Password Reset, while retaining all existing security measures.
+Maintain compatibility with session‑based web login but also expose a lightweight JWT route for upcoming mobile integration (Hybrid Auth).
+
+### 🔧 Requirements & Implementation
+Base foundation
+Keep existing secure session‑based auth for web.
+Continue using bcrypt/argon2 for password hashing.
+Retain HttpOnly + SameSite cookies, CSRF protection, and session‑fixation prevention.
+Add Google OAuth 2.0
+Use Google Identity Services or Passport‑Google‑OAuth20 (Node) / your framework equivalent.
+Environment variables:
+GOOGLE_CLIENT_ID=<from Google Cloud Console>
+GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+GOOGLE_CALLBACK_URL=https://toypetme.com/api/auth/google/callback
+Routes:
+/api/auth/google → redirect to Google.
+/api/auth/google/callback → capture token + profile + email, create or update account, start session, return to dashboard.
+On success, new users automatically get profile populated with: name, email, joinDate.
+Email Verification on Signup
+Use API‑based mail service (SendGrid / Resend / MailerSend) – SMTP often blocked on Replit.
+Env vars:
+EMAIL_API_KEY=<key>
+EMAIL_SENDER="ToyPetMe <noreply@toypetme.com>"
+FRONTEND_URL=https://toypetme.com
+Flow:
+When user signs up → mark verified:false → send verification email with token link.
+Endpoint /api/auth/verify?token=... → validates + switches verified:true.
+Store short‑term token (expires in 15 min – 24 h).
+Password Reset via Email
+Endpoint /api/auth/request-reset → verifies email, generates temporary token, sends link.
+/api/auth/reset/:token → verify + allow password update.
+Tokens stored hashed + short expiry (~15 min).
+Email template: branded “ToyPet Reset Link”.
+JWT Route (for mobile app later)
+Keep sessions by default. Add:
+/api/token issuing a short‑lived JWT from an active session (expiresIn 15 min), using JWT_SECRET.
+/api/mobile/login → (optional) login by JWT for future mobile sync.
+Profile Enhancements
+Extend user schema:
+json
+Copy
+{
+  "username": "...",
+  "email": "...",
+  "verified": Boolean,
+  "joinDate": Date,
+  "authType": "local | google"
+}
+/api/user/profile returns verification status and authType.
+Security Improvement Tasks
+Enforce HTTPS (redirect middleware + HSTS headers + secure cookies).
+Add login rate limiting (5/min per IP).
+Rotate secrets: SESSION_SECRET, JWT_SECRET, EMAIL_API_KEY, GOOGLE_CLIENT_SECRET.
+Audit all sensitive cookies → HttpOnly, Secure, SameSite: Strict.
+UX Enhancements
+Add “Continue with Google” button to login + signup pages.
+Add verification notice banner (“Please verify your email”).
+Add “Forgot Password?” link to login form.
+Confirmation modals on success events.
+Testing
+✅ Signup → email verification.
+✅ Login/email & Google flows.
+✅ Verify that only verified accounts can access protected routes.
+✅ Password reset link and token expiry.
+✅ JWT issued from session for upcoming mobile.
+Deployment Check
+All SSL certs + cookies secure.
+Logs confirm “✅ Email sent”, “✅ Google OAuth success”, “✅ JWT issued”.
+Error boundary returns proper JSON (no stack trace leaks).
+### 🧰 Environment Variables Summary
+SESSION_SECRET=
+JWT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=
+EMAIL_API_KEY=
+EMAIL_SENDER=
+FRONTEND_URL=https://toypetme.com
+### 🌟 Deliverables
+Working Google OAuth login + local login.
+Working email verification and password reset.
+Optional JWT route for mobile.
+Updated profile schema.
+Deployment script confirms success logs.
+Report summarizing verification tests and API endpoints.
+### 🚀 Priority Rationale
+Feature	Importance	Result
+Google OAuth	High (user onboarding & trust)	frictionless, familiar login
+Email Verification & Reset	High (security & legitimacy)	professional app feel
+JWT preview for mobile	Medium (future‑proofing)	cross‑platform ready
+Session security retention	Critical	4.5 ⭐ → 5.0 ⭐ auth system
