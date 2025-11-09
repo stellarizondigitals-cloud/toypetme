@@ -11,7 +11,10 @@ export default function QuickActions() {
   const [, setLocation] = useLocation();
 
   const dailyRewardMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/daily-reward"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/daily-reward");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({

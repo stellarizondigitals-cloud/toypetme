@@ -29,9 +29,12 @@ export default function MiniGame() {
   const scoreRef = useRef(0); // Track current score for useEffect closures
 
   const rewardMutation = useMutation({
-    mutationFn: (score: number) => {
+    mutationFn: async (score: number) => {
       console.log("📤 Sending score to server:", score);
-      return apiRequest("POST", "/api/minigame/reward", { score });
+      const response = await apiRequest("POST", "/api/minigame/reward", { score });
+      const data = await response.json();
+      console.log("📦 Parsed response data:", data);
+      return data;
     },
     onSuccess: async (data: any) => {
       console.log("🎮 Game reward received - full response:", JSON.stringify(data));
