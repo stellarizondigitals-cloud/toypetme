@@ -8,7 +8,9 @@ The project is built as a full-stack web application optimized for mobile device
 
 ## Recent Changes
 
-**November 9, 2025 - Authentication System Improvements & Debugging**
+**November 9, 2025 - Authentication System Improvements & Security Hardening**
+- ✅ Fixed login redirect race condition: Added refetchQueries + 100ms delay to ensure auth state propagates
+- ✅ Implemented automatic HTTPS redirect middleware for production (301 redirects)
 - ✅ Fixed trust proxy configuration for rate limiting (app.set('trust proxy', true))
 - ✅ Migrated from MemStorage to PostgreSQL DbStorage for data persistence across server restarts
 - ✅ Enhanced email error handling: Resend API errors now properly logged with email IDs
@@ -20,6 +22,7 @@ The project is built as a full-stack web application optimized for mobile device
 - Database: PostgreSQL with persistent storage (users, pets, shop_items, inventory tables)
 - Session management: Secure cookies with httpOnly, sameSite:lax, proper regeneration
 - Rate limiting: 5 requests per 15 minutes on auth endpoints
+- HTTPS enforcement: Automatic redirect from HTTP to HTTPS in production
 
 **November 8, 2025 - Phase 2 Google OAuth Integration Complete**
 - Google OAuth authentication implemented using Passport.js
