@@ -41,13 +41,20 @@ export default function Signup() {
     mutationFn: (data: SignupData) =>
       apiRequest("POST", "/api/auth/signup", data),
     onSuccess: async () => {
+      // Invalidate and refetch user data to ensure cache is updated
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Account created!",
         description: "Welcome to ToyPetMe! Meet your new pet Fluffy.",
       });
-      setLocation("/");
+      
+      // Small delay to ensure state updates propagate
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error: Error) => {
       toast({

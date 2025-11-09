@@ -40,13 +40,20 @@ export default function Login() {
     mutationFn: (data: LoginData) =>
       apiRequest("POST", "/api/auth/login", data),
     onSuccess: async () => {
+      // Invalidate and refetch user data to ensure cache is updated
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/me"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
-      setLocation("/");
+      
+      // Small delay to ensure state updates propagate
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
