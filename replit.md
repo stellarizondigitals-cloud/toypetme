@@ -8,6 +8,19 @@ The project is built as a full-stack web application optimized for mobile device
 
 ## Recent Changes
 
+**November 9, 2025 - Mini-Game Reward System Bug Fixes**
+- ✅ Fixed Ball Catch mini-game coin reward bug (two critical issues resolved)
+- ✅ React state closure bug: Score was always 0 when sent to server because endGame() called from setInterval captured stale state
+  - Solution: Used useRef to track current score across async callbacks
+  - scoreRef.current properly updated on each ball catch and read in endGame()
+- ✅ Response parsing bug: Mutations weren't parsing JSON from apiRequest (returns raw Response object)
+  - Solution: Added `await response.json()` in mutation functions
+  - Fixed in MiniGame.tsx reward mutation and QuickActions.tsx daily reward mutation
+- ✅ E2E test passed: Coins now properly update (e.g., 100 → 125 after earning 25 coins)
+- ✅ Architect reviewed: No security issues, pattern is sound
+- Architect recommendations for future: Centralize JSON parsing in apiRequest, add TypeScript typing
+- Related files: client/src/pages/MiniGame.tsx, client/src/components/QuickActions.tsx
+
 **November 9, 2025 - Authentication System Improvements & Security Hardening**
 - ✅ Fixed login redirect race condition: Added refetchQueries + 100ms delay to ensure auth state propagates
 - ✅ Implemented automatic HTTPS redirect middleware for production (301 redirects)
