@@ -8,6 +8,9 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+// Trust proxy for rate limiting behind Replit's reverse proxy
+app.set('trust proxy', true);
+
 const MemoryStore = memorystore(session);
 
 app.use(
