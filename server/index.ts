@@ -18,6 +18,20 @@ if (!process.env.SESSION_SECRET) {
 // Trust proxy for rate limiting behind Replit's reverse proxy
 app.set('trust proxy', true);
 
+// Force HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    // Check if request is already HTTPS
+    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+      return next();
+    }
+    
+    // Redirect HTTP to HTTPS
+    const httpsUrl = `https://${req.headers.host}${req.url}`;
+    res.redirect(301, httpsUrl);
+  });
+}
+
 const MemoryStore = memorystore(session);
 
 app.use(
