@@ -71,17 +71,23 @@ export async function sendVerificationEmail(email: string, username: string, tok
       return;
     }
 
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: EMAIL_SENDER,
       to: email,
       subject: 'Verify your ToyPetMe email address',
       html: htmlContent,
     });
     
-    console.log('✅ Verification email sent to:', email);
+    if (result.error) {
+      console.error('❌ Resend API error sending verification email:', result.error);
+      throw new Error(`Email delivery failed: ${result.error.message}`);
+    }
+    
+    console.log('✅ Verification email sent to:', email, '| Email ID:', result.data?.id);
   } catch (error) {
-    console.error('❌ Failed to send verification email:', error);
-    throw new Error('Failed to send verification email');
+    console.error('❌ Failed to send verification email to', email, ':', error);
+    // Re-throw to surface the error to calling code
+    throw error instanceof Error ? error : new Error('Failed to send verification email');
   }
 }
 
@@ -144,16 +150,22 @@ export async function sendPasswordResetEmail(email: string, username: string, to
       return;
     }
 
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: EMAIL_SENDER,
       to: email,
       subject: 'Reset your ToyPetMe password',
       html: htmlContent,
     });
     
-    console.log('✅ Password reset email sent to:', email);
+    if (result.error) {
+      console.error('❌ Resend API error sending password reset email:', result.error);
+      throw new Error(`Email delivery failed: ${result.error.message}`);
+    }
+    
+    console.log('✅ Password reset email sent to:', email, '| Email ID:', result.data?.id);
   } catch (error) {
-    console.error('❌ Failed to send password reset email:', error);
-    throw new Error('Failed to send password reset email');
+    console.error('❌ Failed to send password reset email to', email, ':', error);
+    // Re-throw to surface the error to calling code
+    throw error instanceof Error ? error : new Error('Failed to send password reset email');
   }
 }

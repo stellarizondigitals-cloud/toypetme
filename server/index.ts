@@ -8,6 +8,13 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+// Validate critical environment variables
+if (!process.env.SESSION_SECRET) {
+  console.error("❌ CRITICAL: SESSION_SECRET environment variable is not set!");
+  console.error("   This is a security risk. Please set SESSION_SECRET in your environment.");
+  process.exit(1);
+}
+
 // Trust proxy for rate limiting behind Replit's reverse proxy
 app.set('trust proxy', true);
 

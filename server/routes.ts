@@ -125,9 +125,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Login
   app.post("/api/auth/login", async (req, res) => {
+    const maskedEmail = req.body.email ? req.body.email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'unknown';
+    
     try {
       const validation = loginSchema.safeParse(req.body);
       if (!validation.success) {
+        console.log(`🔒 Login failed - validation error for ${maskedEmail}`);
         return res.status(400).json({ error: validation.error.errors[0].message });
       }
 
@@ -136,24 +139,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find user
       const user = await storage.getUserByEmail(email);
       if (!user) {
+        console.log(`🔒 Login failed - user not found: ${maskedEmail}`);
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       // Check if user has a password (local auth only)
       if (!user.passwordHash) {
+        console.log(`🔒 Login failed - OAuth user tried password login: ${maskedEmail}`);
         return res.status(401).json({ error: "Please use Google sign-in for this account" });
       }
 
       // Verify password
       const isValid = await bcrypt.compare(password, user.passwordHash);
       if (!isValid) {
+        console.log(`🔒 Login failed - invalid password for: ${maskedEmail}`);
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
       // Regenerate session to prevent session fixation attacks
       req.session.regenerate((err) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          console.error(`❌ Session regeneration error for ${maskedEmail}:`, err);
           return res.status(500).json({ error: "Failed to create session" });
         }
 
@@ -163,17 +169,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Save session before sending response
         req.session.save((saveErr) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            console.error(`❌ Session save error for ${maskedEmail}:`, saveErr);
             return res.status(500).json({ error: "Failed to save session" });
           }
 
+          console.log(`✅ Login successful for ${maskedEmail} (userId: ${user.id})`);
+          
           // Return user without password
           const { passwordHash: _, ...userWithoutPassword } = user;
           res.json(userWithoutPassword);
         });
       });
     } catch (error) {
-      console.error("Login error:", error);
+      console.error(`❌ Login error for ${maskedEmail}:`, error);
       res.status(500).json({ error: "Failed to login" });
     }
   });
