@@ -26,16 +26,41 @@ export default function MiniGame() {
   const [highScore, setHighScore] = useState(0);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const ballIdCounter = useRef(0);
+  const scoreRef = useRef(0); // Track current score for useEffect closures
 
   const rewardMutation = useMutation({
-    mutationFn: (score: number) => 
-      apiRequest("POST", "/api/minigame/reward", { score }),
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    mutationFn: (score: number) => {
+      console.log("📤 Sending score to server:", score);
+      return apiRequest("POST", "/api/minigame/reward", { score });
+    },
+    onSuccess: async (data: any) => {
+      console.log("🎮 Game reward received - full response:", JSON.stringify(data));
+      console.log("💰 Coins earned:", data.coinsEarned, "type:", typeof data.coinsEarned);
+      
+      // Ensure coinsEarned is a valid number
+      const coinsEarned = Number(data.coinsEarned) || 0;
+      
+      // Update the cached user data directly with new coin count
+      queryClient.setQueryData(["/api/user"], (oldData: any) => {
+        if (!oldData) {
+          console.log("⚠️ No cached user data found");
+          return oldData;
+        }
+        const newCoins = oldData.coins + coinsEarned;
+        console.log("💰 Updating coins from", oldData.coins, "to", newCoins);
+        return {
+          ...oldData,
+          coins: newCoins,
+          gems: oldData.gems
+        };
+      });
+      
+      // Also invalidate pet data to update happiness
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
+      
       toast({
         title: "Game Complete!",
-        description: `Earned ${data.coinsEarned} coins and +${data.happinessGained} happiness!`,
+        description: `Earned ${coinsEarned} coins and +${data.happinessGained} happiness!`,
       });
     },
   });
@@ -76,7 +101,11 @@ export default function MiniGame() {
               ball.x > basketX - 10 &&
               ball.x < basketX + 10
             ) {
-              setScore((s) => s + 10);
+              setScore((s) => {
+                const newScore = s + 10;
+                scoreRef.current = newScore; // Keep ref in sync
+                return newScore;
+              });
               return false; // Remove caught ball
             }
             // Remove balls that went off screen
@@ -134,6 +163,7 @@ export default function MiniGame() {
   const startGame = () => {
     setGameState("playing");
     setScore(0);
+    scoreRef.current = 0; // Reset ref
     setTimeLeft(30);
     setBalls([]);
     ballIdCounter.current = 0;
@@ -141,10 +171,12 @@ export default function MiniGame() {
 
   const endGame = () => {
     setGameState("ended");
-    if (score > highScore) {
-      setHighScore(score);
+    const finalScore = scoreRef.current; // Use ref for current value
+    console.log("🎯 Game ending with final score:", finalScore);
+    if (finalScore > highScore) {
+      setHighScore(finalScore);
     }
-    rewardMutation.mutate(score);
+    rewardMutation.mutate(finalScore);
   };
 
   const resetGame = () => {

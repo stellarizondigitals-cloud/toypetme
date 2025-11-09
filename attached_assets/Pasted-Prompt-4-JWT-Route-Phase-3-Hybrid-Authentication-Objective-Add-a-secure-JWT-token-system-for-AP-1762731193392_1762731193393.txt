@@ -1,0 +1,96 @@
+Prompt 4 – JWT Route (Phase 3 Hybrid Authentication)
+Objective:
+Add a secure JWT token system for API / mobile access while keeping the existing session‑based web authentication entirely intact.
+Enable users to maintain traditional session login on web, but allow mobile clients (ToyPetMe App) to authenticate using short‑lived JSON Web Tokens.
+
+🔧 Implementation Requirements
+1️⃣ Environment Variables
+Add to your Replit Secrets / .env file:
+
+JWT_SECRET=<generate strong random key>
+JWT_EXPIRATION=15m        # adjustable (15 minutes recommended)
+JWT_REFRESH_EXPIRATION=7d # for optional refresh tokens
+2️⃣ Dependencies
+If not already present:
+
+bash
+Copy
+npm install jsonwebtoken
+3️⃣ New Route: /api/token
+Create an API endpoint that issues JWTs only for authenticated (session‑holding) users.
+
+js
+Copy
+import jwt from "jsonwebtoken";
+import { verifySession } from "./middleware/sessionAuth.js";
+
+app.get("/api/token", verifySession, (req, res) => {
+  const user = req.session.user;
+
+  // Payload includes minimal info only
+  const payload = {
+    id: user.id,
+    email: user.email,
+    verified: user.verified,
+  };
+
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRATION || "15m",
+  });
+
+  res.json({ token, expiresIn: process.env.JWT_EXPIRATION });
+});
+verifySession checks that the user’s session cookie is valid.
+This protects against anyone generating tokens without being logged in.
+4️⃣ Verify JWT Middleware
+Create a small middleware for mobile / API routes.
+
+js
+Copy
+export function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader)
+    return res.status(401).json({ error: "Missing Authorization header" });
+
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ error: "Invalid or expired token" });
+    req.user = decoded; // attach user info
+    next();
+  });
+}
+Use on API routes that the mobile app accesses:
+
+js
+Copy
+app.get("/api/pets", verifyJWT, (req, res) => {
+  // Return pet data belonging to req.user.id
+});
+5️⃣ Optional Refresh Token Flow
+If you want your mobile app to avoid frequent re‑logins:
+
+js
+Copy
+app.post("/api/token/refresh", (req, res) => {
+  const { token } = req.body;
+  try {
+    const { id, email } = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
+    const newToken = jwt.sign({ id, email }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    res.json({ token: newToken });
+  } catch {
+    res.status(401).json({ error: "Invalid refresh token" });
+  }
+});
+6️⃣ Mobile App Usage
+When your ToyPetMe mobile app logs in:
+
+Call the /api/token endpoint (with credentials or by reusing a verified session link/QR).
+Store the returned JWT securely — use SecureStorage or Keychain.
+Attach it to every API request:
+Authorization: Bearer <token>
+7️⃣ Testing Checklist
+✅ /api/token issues JWT for logged-in user
+✅ Valid JWT grants access to /api/pets
+✅ Expired JWT → 403 error
+✅ Logout/session clear → user cannot get new JWT
+✅ Attempted unauthorized call → 401 error
