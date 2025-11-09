@@ -4,10 +4,15 @@ import {
   type Pet,
   type InsertPet,
   type ShopItem,
+  type InsertShopItem,
   type Inventory,
   type InsertInventory
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { eq, and } from "drizzle-orm";
+import { users, pets, shopItems, inventory } from "@shared/schema";
 
 export interface IStorage {
   // User operations
@@ -367,4 +372,339 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database Storage Implementation
+export class DbStorage implements IStorage {
+  private db;
+
+  constructor() {
+    const connectionString = process.env.DATABASE_URL!;
+    const sql = neon(connectionString);
+    this.db = drizzle(sql);
+    this.initializeShopItems();
+  }
+
+  private async initializeShopItems() {
+    const existing = await this.db.select().from(shopItems);
+    if (existing.length === 0) {
+      const items: InsertShopItem[] = [
+        {
+          name: "Basic Food",
+          description: "Fills your pet's belly",
+          category: "food",
+          price: 10,
+          effect: JSON.stringify({ hunger: 25 }),
+          image: null,
+        },
+        {
+          name: "Premium Food",
+          description: "Delicious premium meal",
+          category: "food",
+          price: 25,
+          effect: JSON.stringify({ hunger: 50 }),
+          image: null,
+        },
+        {
+          name: "Ball",
+          description: "A fun toy for your pet",
+          category: "toy",
+          price: 15,
+          effect: JSON.stringify({ happiness: 30 }),
+          image: null,
+        },
+        {
+          name: "Chew Toy",
+          description: "Keeps your pet entertained",
+          category: "toy",
+          price: 20,
+          effect: JSON.stringify({ happiness: 40 }),
+          image: null,
+        },
+        {
+          name: "Energy Drink",
+          description: "Restores your pet's energy",
+          category: "food",
+          price: 30,
+          effect: JSON.stringify({ energy: 50 }),
+          image: null,
+        },
+        {
+          name: "Soap",
+          description: "Cleans your pet",
+          category: "cleaning",
+          price: 12,
+          effect: JSON.stringify({ cleanliness: 40 }),
+          image: null,
+        },
+      ];
+      await this.db.insert(shopItems).values(items);
+    }
+  }
+
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.username, username));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.email, email));
+    return result[0];
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(
+      and(
+        eq(users.verificationToken, token),
+        eq(users.verified, false)
+      )
+    );
+    if (result.length === 0) return undefined;
+    const user = result[0];
+    if (user.verificationTokenExpiry && user.verificationTokenExpiry < new Date()) {
+      return undefined;
+    }
+    return user;
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.resetToken, token));
+    if (result.length === 0) return undefined;
+    const user = result[0];
+    if (user.resetTokenExpiry && user.resetTokenExpiry < new Date()) {
+      return undefined;
+    }
+    return user;
+  }
+
+  async createUser(username: string, email: string, passwordHash: string | null, authType: string = "local"): Promise<User> {
+    const result = await this.db.insert(users).values({
+      username,
+      email,
+      passwordHash,
+      authType,
+    }).returning();
+    return result[0];
+  }
+
+  async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
+    const result = await this.db.update(users)
+      .set({ coins, gems })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async claimDailyReward(userId: string): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+
+    const now = new Date();
+    const lastReward = user.lastDailyReward;
+    let newStreak = 1;
+
+    if (lastReward) {
+      const hoursSince = (now.getTime() - lastReward.getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        throw new Error("Already claimed today");
+      }
+      if (hoursSince < 48) {
+        newStreak = user.dailyStreak + 1;
+      }
+    }
+
+    const baseReward = 50;
+    const streakBonus = Math.min(newStreak * 10, 100);
+    const coinsReward = baseReward + streakBonus;
+
+    const result = await this.db.update(users)
+      .set({
+        coins: user.coins + coinsReward,
+        dailyStreak: newStreak,
+        lastDailyReward: now,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async setVerificationToken(userId: string, token: string, expiry: Date): Promise<User> {
+    const result = await this.db.update(users)
+      .set({
+        verificationToken: token,
+        verificationTokenExpiry: expiry,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async verifyUser(userId: string): Promise<User> {
+    const result = await this.db.update(users)
+      .set({
+        verified: true,
+        verificationToken: null,
+        verificationTokenExpiry: null,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async setResetToken(userId: string, token: string, expiry: Date): Promise<User> {
+    const result = await this.db.update(users)
+      .set({
+        resetToken: token,
+        resetTokenExpiry: expiry,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async resetPassword(userId: string, passwordHash: string): Promise<User> {
+    const result = await this.db.update(users)
+      .set({
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiry: null,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async updateUserAuthType(userId: string, authType: string): Promise<User> {
+    const result = await this.db.update(users)
+      .set({ authType })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  }
+
+  async markEmailVerified(userId: string): Promise<User> {
+    return this.verifyUser(userId);
+  }
+
+  // Pet operations
+  async getPet(id: string): Promise<Pet | undefined> {
+    const result = await this.db.select().from(pets).where(eq(pets.id, id));
+    return result[0];
+  }
+
+  async getPetByUserId(userId: string): Promise<Pet | undefined> {
+    const result = await this.db.select().from(pets).where(eq(pets.userId, userId));
+    return result[0];
+  }
+
+  async createPet(pet: InsertPet): Promise<Pet> {
+    const result = await this.db.insert(pets).values(pet).returning();
+    return result[0];
+  }
+
+  async updatePetStats(
+    petId: string,
+    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number }
+  ): Promise<Pet> {
+    const result = await this.db.update(pets)
+      .set({ ...stats, lastUpdated: new Date() })
+      .where(eq(pets.id, petId))
+      .returning();
+    return result[0];
+  }
+
+  async updatePetMood(petId: string, mood: string): Promise<Pet> {
+    const result = await this.db.update(pets)
+      .set({ mood })
+      .where(eq(pets.id, petId))
+      .returning();
+    return result[0];
+  }
+
+  async addPetXP(petId: string, xp: number): Promise<Pet> {
+    const pet = await this.getPet(petId);
+    if (!pet) throw new Error("Pet not found");
+
+    const newXP = pet.xp + xp;
+    let newLevel = pet.level;
+    let remainingXP = newXP;
+
+    while (remainingXP >= newLevel * 100) {
+      remainingXP -= newLevel * 100;
+      newLevel++;
+    }
+
+    const result = await this.db.update(pets)
+      .set({ xp: remainingXP, level: newLevel })
+      .where(eq(pets.id, petId))
+      .returning();
+    return result[0];
+  }
+
+  // Shop & Inventory
+  async getAllShopItems(): Promise<ShopItem[]> {
+    return await this.db.select().from(shopItems);
+  }
+
+  async getShopItem(id: string): Promise<ShopItem | undefined> {
+    const result = await this.db.select().from(shopItems).where(eq(shopItems.id, id));
+    return result[0];
+  }
+
+  async getUserInventory(userId: string): Promise<Inventory[]> {
+    return await this.db.select().from(inventory).where(eq(inventory.userId, userId));
+  }
+
+  async addToInventory(userId: string, itemId: string, quantity: number): Promise<Inventory> {
+    const existing = await this.db.select().from(inventory).where(
+      and(
+        eq(inventory.userId, userId),
+        eq(inventory.itemId, itemId)
+      )
+    );
+
+    if (existing.length > 0) {
+      const result = await this.db.update(inventory)
+        .set({ quantity: existing[0].quantity + quantity })
+        .where(eq(inventory.id, existing[0].id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await this.db.insert(inventory)
+        .values({ userId, itemId, quantity })
+        .returning();
+      return result[0];
+    }
+  }
+
+  async useInventoryItem(userId: string, itemId: string): Promise<Inventory | undefined> {
+    const existing = await this.db.select().from(inventory).where(
+      and(
+        eq(inventory.userId, userId),
+        eq(inventory.itemId, itemId)
+      )
+    );
+
+    if (existing.length === 0 || existing[0].quantity <= 0) return undefined;
+
+    const newQuantity = existing[0].quantity - 1;
+
+    if (newQuantity === 0) {
+      await this.db.delete(inventory).where(eq(inventory.id, existing[0].id));
+      return { ...existing[0], quantity: 0 };
+    } else {
+      const result = await this.db.update(inventory)
+        .set({ quantity: newQuantity })
+        .where(eq(inventory.id, existing[0].id))
+        .returning();
+      return result[0];
+    }
+  }
+}
+
+// Use database storage for persistence across restarts
+export const storage = new DbStorage();
