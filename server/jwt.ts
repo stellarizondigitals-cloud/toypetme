@@ -10,8 +10,8 @@ export interface JWTPayload {
 
 // Environment variables for JWT
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRATION: string = process.env.JWT_EXPIRATION || "15m";
-const JWT_REFRESH_EXPIRATION: string = process.env.JWT_REFRESH_EXPIRATION || "7d";
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "15m";
+const JWT_REFRESH_EXPIRATION = process.env.JWT_REFRESH_EXPIRATION || "7d";
 
 // Validate JWT_SECRET at startup
 if (!JWT_SECRET) {

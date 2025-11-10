@@ -8,6 +8,27 @@ ToyPetMe is a mobile-first virtual pet game inspired by Tamagotchi and idle game
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Updates
+
+**November 10, 2025 - JWT Authentication for Mobile/API Access**
+- Implemented hybrid authentication system: Session-based for web + JWT tokens for mobile/API
+- New endpoints:
+  - `GET /api/token` - Issues JWT for authenticated session users
+  - `POST /api/token/refresh` - Renews expired access tokens using refresh tokens
+- Security features:
+  - Access tokens: 15-minute expiration (configurable via JWT_EXPIRATION)
+  - Refresh tokens: 7-day expiration (configurable via JWT_REFRESH_EXPIRATION)
+  - JWT_SECRET validated at startup (64+ character random string required)
+  - Minimal payload: id, email, verified status only
+- Mobile app integration:
+  1. User logs in via web (session cookie)
+  2. App calls GET /api/token to retrieve JWT
+  3. App stores JWT securely (SecureStorage/Keychain)
+  4. App includes `Authorization: Bearer {token}` header in API requests
+  5. When token expires, app calls POST /api/token/refresh
+- E2E tested and architect-approved (no security issues)
+- Related files: `server/jwt.ts`, `server/routes.ts`
+
 ## System Architecture
 
 ### Frontend Architecture
