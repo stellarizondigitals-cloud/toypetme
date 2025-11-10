@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import passport from "passport";
+import { generateJWT, generateRefreshToken, verifyRefreshToken } from "./jwt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to calculate stat decay
@@ -395,6 +396,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   );
+
+  // ===== JWT TOKEN ROUTES (For Mobile/API Access) =====
+  
+  /**
+   * GET /api/token
+   * Issue a JWT token for authenticated session users
+   * This allows mobile apps to get a token after web login
+   */
+  app.get("/api/token", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Generate JWT with user info
+      const token = generateJWT({
+        id: user.id,
+        email: user.email,
+        verified: user.verified
+      });
+
+      // Also generate refresh token for long-term access
+      const refreshToken = generateRefreshToken({
+        id: user.id,
+        email: user.email
+      });
+
+      res.json({
+        token,
+        refreshToken,
+        expiresIn: process.env.JWT_EXPIRATION || "15m",
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          verified: user.verified
+        }
+      });
+    } catch (error) {
+      console.error("Token generation error:", error);
+      res.status(500).json({ error: "Failed to generate token" });
+    }
+  });
+
+  /**
+   * POST /api/token/refresh
+   * Refresh an expired JWT using a valid refresh token
+   */
+  app.post("/api/token/refresh", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+
+      if (!refreshToken) {
+        return res.status(400).json({ error: "Refresh token required" });
+      }
+
+      // Verify refresh token
+      const payload = verifyRefreshToken(refreshToken);
+      if (!payload) {
+        return res.status(401).json({ error: "Invalid or expired refresh token" });
+      }
+
+      // Get fresh user data
+      const user = await storage.getUser(payload.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Generate new JWT
+      const newToken = generateJWT({
+        id: user.id,
+        email: user.email,
+        verified: user.verified
+      });
+
+      res.json({
+        token: newToken,
+        expiresIn: process.env.JWT_EXPIRATION || "15m"
+      });
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      res.status(500).json({ error: "Failed to refresh token" });
+    }
+  });
 
   // Get current user
   app.get("/api/user", requireAuth, async (req, res) => {
