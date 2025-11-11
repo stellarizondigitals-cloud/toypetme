@@ -1,12 +1,31 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPetSchema, createPetRequestSchema, signupSchema, loginSchema, requestResetSchema, resetPasswordSchema, type User } from "@shared/schema";
+import { insertPetSchema, createPetRequestSchema, signupSchema, loginSchema, requestResetSchema, resetPasswordSchema, type User, PET_ACTIONS, type PetActionType } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
 import passport from "passport";
 import { generateJWT, generateRefreshToken, verifyRefreshToken } from "./jwt";
+
+// Helper to evaluate cooldown status
+function evaluateCooldown(lastActionTime: Date | null, cooldownMinutes: number): { ready: boolean; remainingSeconds: number } {
+  if (!lastActionTime) {
+    return { ready: true, remainingSeconds: 0 };
+  }
+  
+  const now = Date.now();
+  const lastAction = new Date(lastActionTime).getTime();
+  const cooldownMs = cooldownMinutes * 60 * 1000;
+  const elapsedMs = now - lastAction;
+  
+  if (elapsedMs >= cooldownMs) {
+    return { ready: true, remainingSeconds: 0 };
+  }
+  
+  const remainingMs = cooldownMs - elapsedMs;
+  return { ready: false, remainingSeconds: Math.ceil(remainingMs / 1000) };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to calculate stat decay
@@ -532,19 +551,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Feed pet
   app.post("/api/pet/feed", requireAuth, async (req, res) => {
     try {
-      let pet = await storage.getPetByUserId(req.session.userId!);
+      const userId = req.session.userId!;
+      const pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      pet = await storage.updatePetStats(pet.id, {
-        hunger: pet.hunger + 20,
-      });
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
-      pet = await storage.addPetXP(pet.id, 5);
+      // Check cooldown
+      const action = PET_ACTIONS.feed;
+      const cooldownCheck = evaluateCooldown(pet.lastFed, action.cooldownMinutes);
+      if (!cooldownCheck.ready) {
+        return res.status(409).json({
+          error: `You need to wait before feeding again`,
+          code: "COOLDOWN_ACTIVE",
+          remainingSeconds: cooldownCheck.remainingSeconds,
+        });
+      }
 
-      res.json(pet);
+      // Check coins
+      if (user.coins < action.coinCost) {
+        return res.status(400).json({
+          error: "Not enough coins",
+          code: "INSUFFICIENT_FUNDS",
+          requiredCoins: action.coinCost,
+          availableCoins: user.coins,
+        });
+      }
+
+      // Perform action
+      const result = await storage.performPetAction(userId, pet.id, "feed");
+      res.json(result);
     } catch (error) {
+      console.error("Feed error:", error);
       res.status(500).json({ error: "Failed to feed pet" });
     }
   });
@@ -552,20 +595,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Play with pet
   app.post("/api/pet/play", requireAuth, async (req, res) => {
     try {
-      let pet = await storage.getPetByUserId(req.session.userId!);
+      const userId = req.session.userId!;
+      const pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      pet = await storage.updatePetStats(pet.id, {
-        happiness: pet.happiness + 15,
-        energy: pet.energy - 10,
-      });
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
-      pet = await storage.addPetXP(pet.id, 10);
+      // Check cooldown
+      const action = PET_ACTIONS.play;
+      const cooldownCheck = evaluateCooldown(pet.lastPlayed, action.cooldownMinutes);
+      if (!cooldownCheck.ready) {
+        return res.status(409).json({
+          error: `You need to wait before playing again`,
+          code: "COOLDOWN_ACTIVE",
+          remainingSeconds: cooldownCheck.remainingSeconds,
+        });
+      }
 
-      res.json(pet);
+      // Check coins
+      if (user.coins < action.coinCost) {
+        return res.status(400).json({
+          error: "Not enough coins",
+          code: "INSUFFICIENT_FUNDS",
+          requiredCoins: action.coinCost,
+          availableCoins: user.coins,
+        });
+      }
+
+      // Perform action
+      const result = await storage.performPetAction(userId, pet.id, "play");
+      res.json(result);
     } catch (error) {
+      console.error("Play error:", error);
       res.status(500).json({ error: "Failed to play with pet" });
     }
   });
@@ -573,19 +639,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clean pet
   app.post("/api/pet/clean", requireAuth, async (req, res) => {
     try {
-      let pet = await storage.getPetByUserId(req.session.userId!);
+      const userId = req.session.userId!;
+      const pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      pet = await storage.updatePetStats(pet.id, {
-        cleanliness: pet.cleanliness + 25,
-      });
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
-      pet = await storage.addPetXP(pet.id, 8);
+      // Check cooldown
+      const action = PET_ACTIONS.clean;
+      const cooldownCheck = evaluateCooldown(pet.lastCleaned, action.cooldownMinutes);
+      if (!cooldownCheck.ready) {
+        return res.status(409).json({
+          error: `You need to wait before cleaning again`,
+          code: "COOLDOWN_ACTIVE",
+          remainingSeconds: cooldownCheck.remainingSeconds,
+        });
+      }
 
-      res.json(pet);
+      // Check coins
+      if (user.coins < action.coinCost) {
+        return res.status(400).json({
+          error: "Not enough coins",
+          code: "INSUFFICIENT_FUNDS",
+          requiredCoins: action.coinCost,
+          availableCoins: user.coins,
+        });
+      }
+
+      // Perform action
+      const result = await storage.performPetAction(userId, pet.id, "clean");
+      res.json(result);
     } catch (error) {
+      console.error("Clean error:", error);
       res.status(500).json({ error: "Failed to clean pet" });
     }
   });

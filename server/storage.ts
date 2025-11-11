@@ -6,7 +6,9 @@ import {
   type ShopItem,
   type InsertShopItem,
   type Inventory,
-  type InsertInventory
+  type InsertInventory,
+  PET_ACTIONS,
+  type PetActionType
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
@@ -38,10 +40,12 @@ export interface IStorage {
   createPet(pet: InsertPet): Promise<Pet>;
   updatePetStats(
     petId: string, 
-    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number }
+    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number },
+    timestamps?: { lastFed?: Date; lastPlayed?: Date; lastCleaned?: Date }
   ): Promise<Pet>;
   updatePetMood(petId: string, mood: string): Promise<Pet>;
   addPetXP(petId: string, xp: number): Promise<Pet>;
+  performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }>;
   
   // Shop & Inventory
   getAllShopItems(): Promise<ShopItem[]>;
@@ -295,7 +299,8 @@ export class MemStorage implements IStorage {
 
   async updatePetStats(
     petId: string,
-    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number }
+    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number },
+    timestamps?: { lastFed?: Date; lastPlayed?: Date; lastCleaned?: Date }
   ): Promise<Pet> {
     const pet = this.pets.get(petId);
     if (!pet) throw new Error("Pet not found");
@@ -304,6 +309,10 @@ export class MemStorage implements IStorage {
     if (stats.happiness !== undefined) pet.happiness = Math.max(0, Math.min(100, stats.happiness));
     if (stats.energy !== undefined) pet.energy = Math.max(0, Math.min(100, stats.energy));
     if (stats.cleanliness !== undefined) pet.cleanliness = Math.max(0, Math.min(100, stats.cleanliness));
+    
+    if (timestamps?.lastFed) pet.lastFed = timestamps.lastFed;
+    if (timestamps?.lastPlayed) pet.lastPlayed = timestamps.lastPlayed;
+    if (timestamps?.lastCleaned) pet.lastCleaned = timestamps.lastCleaned;
     
     pet.lastUpdated = new Date();
     this.pets.set(petId, pet);
@@ -331,6 +340,51 @@ export class MemStorage implements IStorage {
     
     this.pets.set(petId, pet);
     return pet;
+  }
+
+  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }> {
+    const pet = this.pets.get(petId);
+    if (!pet) throw new Error("Pet not found");
+    if (pet.userId !== userId) throw new Error("Unauthorized");
+    
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    const action = PET_ACTIONS[actionType];
+    if (!action) throw new Error("Invalid action type");
+    
+    // Apply stat deltas
+    const now = new Date();
+    const stats: any = {};
+    const timestamps: any = {};
+    
+    for (const [stat, delta] of Object.entries(action.statIncrease)) {
+      stats[stat] = pet[stat as keyof Pet] as number + delta;
+    }
+    
+    // Set action timestamp
+    if (actionType === 'feed') timestamps.lastFed = now;
+    else if (actionType === 'play') timestamps.lastPlayed = now;
+    else if (actionType === 'clean') timestamps.lastCleaned = now;
+    
+    // Update pet stats and timestamp
+    let updatedPet = await this.updatePetStats(petId, stats, timestamps);
+    
+    // Add XP
+    updatedPet = await this.addPetXP(petId, action.xpReward);
+    
+    // Deduct coins
+    const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
+    
+    // Calculate cooldowns
+    const cooldowns: Record<string, number> = {
+      feed: 0,
+      play: 0,
+      clean: 0,
+      sleep: 0,
+    };
+    
+    return { pet: updatedPet, user: updatedUser, cooldowns };
   }
 
   // Shop & Inventory methods
@@ -625,10 +679,11 @@ export class DbStorage implements IStorage {
 
   async updatePetStats(
     petId: string,
-    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number }
+    stats: { hunger?: number; happiness?: number; energy?: number; cleanliness?: number },
+    timestamps?: { lastFed?: Date; lastPlayed?: Date; lastCleaned?: Date }
   ): Promise<Pet> {
     const result = await this.db.update(pets)
-      .set({ ...stats, lastUpdated: new Date() })
+      .set({ ...stats, ...timestamps, lastUpdated: new Date() })
       .where(eq(pets.id, petId))
       .returning();
     return result[0];
@@ -660,6 +715,52 @@ export class DbStorage implements IStorage {
       .where(eq(pets.id, petId))
       .returning();
     return result[0];
+  }
+
+  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }> {
+    const pet = await this.getPet(petId);
+    if (!pet) throw new Error("Pet not found");
+    if (pet.userId !== userId) throw new Error("Unauthorized");
+    
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    const action = PET_ACTIONS[actionType];
+    if (!action) throw new Error("Invalid action type");
+    
+    // Apply stat deltas
+    const now = new Date();
+    const stats: any = {};
+    const timestamps: any = {};
+    
+    for (const [stat, delta] of Object.entries(action.statIncrease)) {
+      const currentValue = pet[stat as keyof Pet] as number;
+      stats[stat] = Math.max(0, Math.min(100, currentValue + delta));
+    }
+    
+    // Set action timestamp
+    if (actionType === 'feed') timestamps.lastFed = now;
+    else if (actionType === 'play') timestamps.lastPlayed = now;
+    else if (actionType === 'clean') timestamps.lastCleaned = now;
+    
+    // Update pet stats and timestamp
+    let updatedPet = await this.updatePetStats(petId, stats, timestamps);
+    
+    // Add XP
+    updatedPet = await this.addPetXP(petId, action.xpReward);
+    
+    // Deduct coins
+    const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
+    
+    // Calculate cooldowns
+    const cooldowns: Record<string, number> = {
+      feed: 0,
+      play: 0,
+      clean: 0,
+      sleep: 0,
+    };
+    
+    return { pet: updatedPet, user: updatedUser, cooldowns };
   }
 
   // Shop & Inventory

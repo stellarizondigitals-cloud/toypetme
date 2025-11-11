@@ -131,3 +131,33 @@ export type ShopItem = typeof shopItems.$inferSelect;
 
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
+
+// Pet action configuration
+export const PET_ACTIONS = {
+  feed: {
+    statIncrease: { hunger: 20 },
+    coinCost: 10,
+    cooldownMinutes: 5,
+    xpReward: 5,
+  },
+  play: {
+    statIncrease: { happiness: 15, energy: -10 },
+    coinCost: 15,
+    cooldownMinutes: 5,
+    xpReward: 10,
+  },
+  clean: {
+    statIncrease: { cleanliness: 25 },
+    coinCost: 12,
+    cooldownMinutes: 5,
+    xpReward: 8,
+  },
+  sleep: {
+    statIncrease: { energy: 30 },
+    coinCost: 0,
+    cooldownMinutes: 5,
+    xpReward: 5,
+  },
+} as const;
+
+export type PetActionType = keyof typeof PET_ACTIONS;
