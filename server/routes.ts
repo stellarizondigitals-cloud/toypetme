@@ -28,24 +28,6 @@ function evaluateCooldown(lastActionTime: Date | null, cooldownMinutes: number):
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Helper function to calculate stat decay
-  const applyStatDecay = (pet: any) => {
-    const now = new Date();
-    const lastUpdated = new Date(pet.lastUpdated);
-    const hoursPassed = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
-    
-    // Stats decay by 5 points per hour
-    const decayAmount = Math.floor(hoursPassed * 5);
-    
-    return {
-      ...pet,
-      hunger: Math.max(0, pet.hunger - decayAmount),
-      happiness: Math.max(0, pet.happiness - decayAmount),
-      energy: Math.max(0, pet.energy - decayAmount),
-      cleanliness: Math.max(0, pet.cleanliness - Math.floor(decayAmount * 0.5)), // Decays slower
-    };
-  };
-
   const calculateMood = (hunger: number, happiness: number, energy: number): string => {
     if (hunger < 20 || happiness < 20 || energy < 20) return "sad";
     if (hunger > 70 && happiness > 70 && energy > 70) return "happy";
