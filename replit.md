@@ -10,6 +10,33 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
+**November 11, 2025 - Automatic Stat Decay System with Health Mechanics**
+- Implemented comprehensive stat decay system with per-stat timestamp tracking
+- Pet schema enhancements:
+  - Added per-stat decay timestamps: `lastHungerDecay`, `lastHappinessDecay`, `lastCleanlinessDecay`, `lastHealthDecay`
+  - Added `isSick: boolean` flag that activates when health reaches 0
+  - All decay timestamps initialize to `now()` on pet creation
+- Decay configuration (`STAT_DECAY`):
+  - Hunger: -1 every 30 minutes
+  - Happiness: -1 every 60 minutes
+  - Cleanliness: -1 every 120 minutes
+  - Health: -1 every 60 minutes (ONLY when any other stat is at 0)
+- Core decay logic (`calculateStatDecay()`):
+  - Each stat tracks its own decay independently with separate timestamps
+  - Timestamps advance only by consumed intervals (preserves fractional time)
+  - Health decay uses "wasSick" tracking to prevent double-counting:
+    - When pet becomes sick (stat hits 0): Reset health timer, don't decay yet
+    - When pet stays sick: Decay health based on time since became sick
+    - When pet becomes healthy: Reset health timer to now
+  - Returns updated stats, isSick flag, and all 4 timestamps
+- Storage layer implementation:
+  - `applyStatDecay()` in MemStorage and DbStorage
+  - Atomic updates of all stats, health, isSick, and 4 decay timestamps
+  - Called before every pet interaction (GET /api/pet, feed, play, clean, sleep)
+- Database migration: Added 4 timestamp columns + isSick boolean
+- Architect approved: Correctly prevents health double-counting in healthy→sick→healthy→sick cycles
+- Related files: `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`
+
 **November 11, 2025 - Pet Action Cooldowns, Coin Costs, and Animated Feedback**
 - Implemented comprehensive action system with cooldowns, coin costs, and visual feedback
 - Backend enhancements:

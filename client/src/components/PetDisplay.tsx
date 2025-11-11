@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heart, Sparkles, Battery, Droplets, Activity, Apple, Moon } from "lucide-react";
+import { Heart, Sparkles, Battery, Droplets, Activity, Apple, Moon, Thermometer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { Pet } from "@shared/schema";
 
@@ -26,6 +26,7 @@ export default function PetDisplay({
   }, []);
 
   const getPetMood = () => {
+    if (pet.isSick) return "sick";
     if (pet.hunger < 40 || pet.happiness < 40) return "sad";
     if (pet.cleanliness < 40) return "dirty";
     const avgStat = (pet.hunger + pet.happiness + pet.energy + pet.cleanliness + (pet.health ?? 100)) / 5;
@@ -36,6 +37,7 @@ export default function PetDisplay({
   const isDirty = pet.cleanliness < 40;
   const isHungry = pet.hunger < 40;
   const isTired = pet.energy < 40;
+  const isSick = pet.isSick || false;
 
   const mood = getPetMood();
 
@@ -93,7 +95,7 @@ export default function PetDisplay({
           style={{ imageRendering: "pixelated" }}
           data-testid="img-pet"
         >
-          <g className={isDirty ? "dirty-overlay" : ""}>
+          <g className={isSick ? "sick-overlay" : isDirty ? "dirty-overlay" : ""}>
             <rect x="30" y="30" width="40" height="40" fill="hsl(var(--primary))" rx="8" />
             
             <rect x="25" y="45" width="10" height="15" fill="hsl(var(--primary))" rx="3" />
@@ -123,6 +125,13 @@ export default function PetDisplay({
             {(mood === "sad" || mood === "dirty") && (
               <path d="M 40 58 Q 50 53 60 58" stroke="hsl(var(--primary-foreground))" strokeWidth="2" fill="none" />
             )}
+            {mood === "sick" && (
+              <>
+                <circle cx="50" cy="56" r="2" fill="hsl(var(--primary-foreground))" />
+                <line x1="42" y1="55" x2="47" y2="55" stroke="hsl(var(--primary-foreground))" strokeWidth="1.5" />
+                <line x1="53" y1="55" x2="58" y2="55" stroke="hsl(var(--primary-foreground))" strokeWidth="1.5" />
+              </>
+            )}
             
             <circle cx="50" cy="25" r="8" fill="hsl(var(--accent))" opacity="0.8" />
           </g>
@@ -136,13 +145,19 @@ export default function PetDisplay({
           )}
         </svg>
 
-        {isHungry && (
+        {isSick && (
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-destructive/90 rounded-full p-1.5 float-animation pulse-animation" data-testid="indicator-sick">
+            <Thermometer className="w-5 h-5 text-destructive-foreground" />
+          </div>
+        )}
+
+        {isHungry && !isSick && (
           <div className="absolute -top-2 -right-2 bg-destructive/90 rounded-full p-1.5 float-animation" data-testid="indicator-hungry">
             <Apple className="w-4 h-4 text-destructive-foreground" />
           </div>
         )}
         
-        {isTired && (
+        {isTired && !isSick && (
           <div className="absolute -top-2 -left-2 bg-muted/90 rounded-full p-1.5 float-animation" style={{ animationDelay: "0.5s" }} data-testid="indicator-tired">
             <Moon className="w-4 h-4 text-muted-foreground" />
           </div>
@@ -216,6 +231,25 @@ export default function PetDisplay({
 
         .dirty-overlay {
           filter: brightness(0.85) saturate(0.8);
+        }
+
+        .sick-overlay {
+          filter: brightness(0.7) saturate(0.4) hue-rotate(180deg);
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.8;
+          }
+        }
+
+        .pulse-animation {
+          animation: pulse 1.5s ease-in-out infinite;
         }
 
         @keyframes progress-fill {
