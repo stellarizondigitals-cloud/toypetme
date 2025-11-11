@@ -38,9 +38,11 @@ export const pets = pgTable("pets", {
   age: integer("age").notNull().default(0), // Age in days
   evolutionStage: integer("evolution_stage").notNull().default(1), // 1=baby, 2=teen, 3=adult
   mood: text("mood").notNull().default("happy"),
+  isSick: boolean("is_sick").notNull().default(false),
   lastFed: timestamp("last_fed").default(sql`now()`),
   lastPlayed: timestamp("last_played").default(sql`now()`),
   lastCleaned: timestamp("last_cleaned").default(sql`now()`),
+  lastDecayCheck: timestamp("last_decay_check").notNull().default(sql`now()`),
   lastUpdated: timestamp("last_updated").notNull().default(sql`now()`),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 }, (table) => ({
@@ -161,3 +163,75 @@ export const PET_ACTIONS = {
 } as const;
 
 export type PetActionType = keyof typeof PET_ACTIONS;
+
+// Stat decay configuration
+export const STAT_DECAY = {
+  hunger: {
+    decayRate: 1, // Points per interval
+    intervalMinutes: 30,
+  },
+  happiness: {
+    decayRate: 1,
+    intervalMinutes: 60,
+  },
+  cleanliness: {
+    decayRate: 1,
+    intervalMinutes: 120,
+  },
+  health: {
+    decayRate: 1, // Only decays when other stats are at 0
+    intervalMinutes: 60,
+  },
+} as const;
+
+// Calculate stat decay based on time elapsed
+export function calculateStatDecay(pet: Pet, now: Date = new Date()): {
+  hunger: number;
+  happiness: number;
+  cleanliness: number;
+  health: number;
+  isSick: boolean;
+} {
+  const lastCheck = new Date(pet.lastDecayCheck);
+  const elapsedMinutes = Math.floor((now.getTime() - lastCheck.getTime()) / 1000 / 60);
+  
+  if (elapsedMinutes < 0) {
+    // Time went backwards? Just return current stats
+    return {
+      hunger: pet.hunger,
+      happiness: pet.happiness,
+      cleanliness: pet.cleanliness,
+      health: pet.health,
+      isSick: pet.isSick,
+    };
+  }
+
+  // Calculate decay for each stat
+  const hungerIntervals = Math.floor(elapsedMinutes / STAT_DECAY.hunger.intervalMinutes);
+  const happinessIntervals = Math.floor(elapsedMinutes / STAT_DECAY.happiness.intervalMinutes);
+  const cleanlinessIntervals = Math.floor(elapsedMinutes / STAT_DECAY.cleanliness.intervalMinutes);
+
+  // Apply decay (can't go below 0)
+  let newHunger = Math.max(0, pet.hunger - (hungerIntervals * STAT_DECAY.hunger.decayRate));
+  let newHappiness = Math.max(0, pet.happiness - (happinessIntervals * STAT_DECAY.happiness.decayRate));
+  let newCleanliness = Math.max(0, pet.cleanliness - (cleanlinessIntervals * STAT_DECAY.cleanliness.decayRate));
+  let newHealth = pet.health;
+
+  // If any stat is at 0, health starts decaying
+  const hasZeroStat = newHunger === 0 || newHappiness === 0 || newCleanliness === 0;
+  if (hasZeroStat) {
+    const healthIntervals = Math.floor(elapsedMinutes / STAT_DECAY.health.intervalMinutes);
+    newHealth = Math.max(0, pet.health - (healthIntervals * STAT_DECAY.health.decayRate));
+  }
+
+  // Pet becomes sick when health reaches 0
+  const isSick = newHealth === 0;
+
+  return {
+    hunger: newHunger,
+    happiness: newHappiness,
+    cleanliness: newCleanliness,
+    health: newHealth,
+    isSick,
+  };
+}
