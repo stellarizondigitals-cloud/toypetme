@@ -1,7 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
-import StatsPanel from "@/components/StatsPanel";
 import ActionButtons from "@/components/ActionButtons";
 import QuickActions from "@/components/QuickActions";
 import BottomTabNav from "@/components/BottomTabNav";
@@ -123,16 +122,9 @@ export default function GameHome() {
         )}
         
         <PetDisplay 
-          name={pet.name} 
-          level={pet.level} 
-          mood={pet.mood as "happy" | "neutral" | "sad" | "sleeping"} 
-        />
-        
-        <StatsPanel
-          hunger={pet.hunger}
-          happiness={pet.happiness}
-          energy={pet.energy}
-          cleanliness={pet.cleanliness}
+          pet={pet}
+          size="large"
+          showStats={true}
         />
         
         <ActionButtons
