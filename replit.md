@@ -10,6 +10,48 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
+**November 11, 2025 - Pet Action Cooldowns, Coin Costs, and Animated Feedback**
+- Implemented comprehensive action system with cooldowns, coin costs, and visual feedback
+- Backend enhancements:
+  - Added `PET_ACTIONS` constant in shared schema defining all action parameters:
+    - Feed: +20 hunger, 10 coins, 5min cooldown, 5 XP
+    - Play: +15 happiness/-10 energy, 15 coins, 5min cooldown, 10 XP
+    - Clean: +25 cleanliness, 12 coins, 5min cooldown, 8 XP
+    - Sleep: +30 energy, 0 coins, 5min cooldown (legacy, no frontend timer), 5 XP
+  - Created `evaluateCooldown()` helper function to calculate remaining cooldown time
+  - Enhanced Feed/Play/Clean routes with cooldown enforcement and coin validation
+  - Implemented atomic `performPetAction()` in storage layer (MemStorage + DbStorage):
+    - Validates user ownership and resource availability
+    - Applies stat deltas with 0-100 clamping
+    - Updates action timestamps (lastFed, lastPlayed, lastCleaned)
+    - Adds XP with level-up logic
+    - Deducts coins from user balance
+    - Returns structured payload: `{ pet, user, cooldowns }`
+  - Error handling:
+    - 409 Conflict: Cooldown active (includes remainingSeconds)
+    - 400 Bad Request: Insufficient coins (includes requiredCoins, availableCoins)
+- Frontend enhancements:
+  - Updated ActionButtons component to accept pet object and isLoading prop
+  - Real-time cooldown countdown timers (1-second interval, MM:SS format)
+  - Displays coin costs on ready buttons, "Free" for zero-cost actions
+  - Created SparkleEffect component with 6 animated particles
+  - Sparkle animations trigger on successful actions (timestamp changes)
+  - Disabled states during cooldowns and loading
+  - All 4 buttons: Feed, Play, Clean (with cooldowns), Sleep (legacy free action)
+  - GameHome mutations updated with optimistic cache updates via setQueryData
+  - Comprehensive error handling with descriptive toast notifications
+- User experience flow:
+  1. User clicks action → mutation called
+  2. Backend validates cooldown → 409 if active
+  3. Backend validates coins → 400 if insufficient
+  4. If successful → atomic update of pet + user + timestamp
+  5. Frontend receives response → optimistic cache update
+  6. Sparkle animation plays → countdown timer starts
+  7. Button disabled for 5 minutes → timer counts down
+  8. When ready → shows coin cost again
+- Architect approved: No security or performance concerns
+- Related files: `shared/schema.ts`, `server/routes.ts`, `server/storage.ts`, `client/src/components/ActionButtons.tsx`, `client/src/pages/GameHome.tsx`
+
 **November 11, 2025 - Multi-Pet Creation System**
 - Replaced single default "Fluffy" pet with multi-pet system supporting up to 20 pets per user
 - Enhanced Pet schema with new fields: type, health, age, evolutionStage, lastFed, lastPlayed, lastCleaned
