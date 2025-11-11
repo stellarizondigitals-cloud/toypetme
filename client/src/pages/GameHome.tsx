@@ -28,12 +28,20 @@ export default function GameHome() {
   // Feed mutation
   const feedMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/pet/feed"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    onSuccess: (data: any) => {
+      queryClient.setQueryData(["/api/pet"], data.pet);
+      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Fed your pet!",
-        description: "+20 Hunger, +5 XP",
+        description: "Your pet loves the food! +20 Hunger, +5 XP",
+      });
+    },
+    onError: (error: any) => {
+      const message = error.message || "Failed to feed pet";
+      toast({
+        title: "Cannot feed right now",
+        description: message,
+        variant: "destructive",
       });
     },
   });
@@ -41,12 +49,20 @@ export default function GameHome() {
   // Play mutation
   const playMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/pet/play"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    onSuccess: (data: any) => {
+      queryClient.setQueryData(["/api/pet"], data.pet);
+      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Playing with your pet!",
-        description: "+15 Happiness, -10 Energy, +10 XP",
+        description: "So much fun! +15 Happiness, +10 XP",
+      });
+    },
+    onError: (error: any) => {
+      const message = error.message || "Failed to play with pet";
+      toast({
+        title: "Cannot play right now",
+        description: message,
+        variant: "destructive",
       });
     },
   });
@@ -54,12 +70,20 @@ export default function GameHome() {
   // Clean mutation
   const cleanMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/pet/clean"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    onSuccess: (data: any) => {
+      queryClient.setQueryData(["/api/pet"], data.pet);
+      queryClient.setQueryData(["/api/user"], data.user);
       toast({
         title: "Cleaned your pet!",
-        description: "+25 Cleanliness, +8 XP",
+        description: "All sparkly and clean! +25 Cleanliness, +8 XP",
+      });
+    },
+    onError: (error: any) => {
+      const message = error.message || "Failed to clean pet";
+      toast({
+        title: "Cannot clean right now",
+        description: message,
+        variant: "destructive",
       });
     },
   });
@@ -72,7 +96,15 @@ export default function GameHome() {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Pet is resting...",
-        description: "+30 Energy, +5 XP",
+        description: "Sweet dreams! +30 Energy, +5 XP",
+      });
+    },
+    onError: (error: any) => {
+      const message = error.message || "Failed to put pet to sleep";
+      toast({
+        title: "Cannot sleep right now",
+        description: message,
+        variant: "destructive",
       });
     },
   });
@@ -128,10 +160,12 @@ export default function GameHome() {
         />
         
         <ActionButtons
+          pet={pet}
           onFeed={() => feedMutation.mutate()}
           onPlay={() => playMutation.mutate()}
           onClean={() => cleanMutation.mutate()}
           onSleep={() => sleepMutation.mutate()}
+          isLoading={feedMutation.isPending || playMutation.isPending || cleanMutation.isPending || sleepMutation.isPending}
         />
         
         <QuickActions />
