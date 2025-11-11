@@ -7,6 +7,7 @@ import GameHome from "@/pages/GameHome";
 import MiniGame from "@/pages/MiniGame";
 import Shop from "@/pages/Shop";
 import Inventory from "@/pages/Inventory";
+import MyPets from "@/pages/MyPets";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Profile from "@/pages/Profile";
@@ -56,6 +57,9 @@ function Router() {
       </Route>
       <Route path="/inventory">
         {() => <ProtectedRoute component={Inventory} />}
+      </Route>
+      <Route path="/my-pets">
+        {() => <ProtectedRoute component={MyPets} />}
       </Route>
       <Route path="/profile">
         {() => <ProtectedRoute component={Profile} />}

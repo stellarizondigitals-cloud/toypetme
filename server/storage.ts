@@ -34,6 +34,7 @@ export interface IStorage {
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
   getPetByUserId(userId: string): Promise<Pet | undefined>;
+  getAllPetsByUserId(userId: string): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
   updatePetStats(
     petId: string, 
@@ -260,21 +261,33 @@ export class MemStorage implements IStorage {
     return Array.from(this.pets.values()).find(pet => pet.userId === userId);
   }
 
+  async getAllPetsByUserId(userId: string): Promise<Pet[]> {
+    return Array.from(this.pets.values()).filter(pet => pet.userId === userId);
+  }
+
   async createPet(insertPet: InsertPet): Promise<Pet> {
     const id = randomUUID();
+    const now = new Date();
     const pet: Pet = {
       id,
       userId: insertPet.userId,
       name: insertPet.name,
+      type: insertPet.type ?? "Fluffy",
       level: insertPet.level ?? 1,
       xp: insertPet.xp ?? 0,
       hunger: insertPet.hunger ?? 100,
       happiness: insertPet.happiness ?? 100,
       energy: insertPet.energy ?? 100,
       cleanliness: insertPet.cleanliness ?? 100,
+      health: insertPet.health ?? 100,
+      age: insertPet.age ?? 0,
+      evolutionStage: insertPet.evolutionStage ?? 1,
       mood: insertPet.mood ?? "happy",
-      lastUpdated: new Date(),
-      createdAt: new Date(),
+      lastFed: insertPet.lastFed ?? now,
+      lastPlayed: insertPet.lastPlayed ?? now,
+      lastCleaned: insertPet.lastCleaned ?? now,
+      lastUpdated: now,
+      createdAt: now,
     };
     this.pets.set(id, pet);
     return pet;
@@ -599,6 +612,10 @@ export class DbStorage implements IStorage {
   async getPetByUserId(userId: string): Promise<Pet | undefined> {
     const result = await this.db.select().from(pets).where(eq(pets.userId, userId));
     return result[0];
+  }
+
+  async getAllPetsByUserId(userId: string): Promise<Pet[]> {
+    return await this.db.select().from(pets).where(eq(pets.userId, userId));
   }
 
   async createPet(pet: InsertPet): Promise<Pet> {

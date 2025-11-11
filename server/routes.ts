@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPetSchema, signupSchema, loginSchema, requestResetSchema, resetPasswordSchema, type User } from "@shared/schema";
+import { insertPetSchema, createPetRequestSchema, signupSchema, loginSchema, requestResetSchema, resetPasswordSchema, type User } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import rateLimit from "express-rate-limit";
@@ -607,6 +607,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(pet);
     } catch (error) {
       res.status(500).json({ error: "Failed to put pet to sleep" });
+    }
+  });
+
+  // Get all user's pets
+  app.get("/api/pets", requireAuth, async (req, res) => {
+    try {
+      const pets = await storage.getAllPetsByUserId(req.session.userId!);
+      res.json(pets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pets" });
+    }
+  });
+
+  // Create new pet with random stats
+  app.post("/api/pets", requireAuth, async (req, res) => {
+    try {
+      const validation = createPetRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: validation.error.errors[0].message });
+      }
+
+      const { name, type } = validation.data;
+      const userId = req.session.userId!;
+
+      // Check pet count limit (max 20 pets per user)
+      const existingPets = await storage.getAllPetsByUserId(userId);
+      if (existingPets.length >= 20) {
+        return res.status(400).json({ error: "Maximum of 20 pets reached" });
+      }
+
+      // Generate random initial stats (60-100 range for good start)
+      const randomStat = () => Math.floor(Math.random() * 41) + 60;
+
+      const newPet = await storage.createPet({
+        userId,
+        name,
+        type: type || "Fluffy",
+        level: 1,
+        xp: 0,
+        hunger: randomStat(),
+        happiness: randomStat(),
+        energy: randomStat(),
+        cleanliness: randomStat(),
+        health: randomStat(),
+        age: 0,
+        evolutionStage: 1,
+        mood: "happy",
+      });
+
+      res.json(newPet);
+    } catch (error) {
+      console.error("Pet creation error:", error);
+      res.status(500).json({ error: "Failed to create pet" });
     }
   });
 

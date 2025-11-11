@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -27,16 +27,25 @@ export const pets = pgTable("pets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
+  type: text("type").notNull().default("Fluffy"), // Pet species/type
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),
   hunger: integer("hunger").notNull().default(100),
   happiness: integer("happiness").notNull().default(100),
   energy: integer("energy").notNull().default(100),
   cleanliness: integer("cleanliness").notNull().default(100),
+  health: integer("health").notNull().default(100),
+  age: integer("age").notNull().default(0), // Age in days
+  evolutionStage: integer("evolution_stage").notNull().default(1), // 1=baby, 2=teen, 3=adult
   mood: text("mood").notNull().default("happy"),
+  lastFed: timestamp("last_fed").default(sql`now()`),
+  lastPlayed: timestamp("last_played").default(sql`now()`),
+  lastCleaned: timestamp("last_cleaned").default(sql`now()`),
   lastUpdated: timestamp("last_updated").notNull().default(sql`now()`),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
+}, (table) => ({
+  userIdIdx: index("pets_user_id_idx").on(table.userId),
+}));
 
 // Shop items
 export const shopItems = pgTable("shop_items", {
@@ -91,6 +100,12 @@ export const insertPetSchema = createInsertSchema(pets).omit({
   createdAt: true,
 });
 
+// Schema for creating a pet via API (client only provides name and type)
+export const createPetRequestSchema = z.object({
+  name: z.string().min(1, "Pet name is required").max(50, "Pet name must be less than 50 characters"),
+  type: z.string().optional(),
+});
+
 export const insertShopItemSchema = createInsertSchema(shopItems).omit({
   id: true,
 });
@@ -109,6 +124,7 @@ export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
 
 export type InsertPet = z.infer<typeof insertPetSchema>;
 export type Pet = typeof pets.$inferSelect;
+export type CreatePetRequest = z.infer<typeof createPetRequestSchema>;
 
 export type InsertShopItem = z.infer<typeof insertShopItemSchema>;
 export type ShopItem = typeof shopItems.$inferSelect;
