@@ -8,7 +8,8 @@ import {
   type Inventory,
   type InsertInventory,
   PET_ACTIONS,
-  type PetActionType
+  type PetActionType,
+  calculateStatDecay
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
@@ -46,6 +47,7 @@ export interface IStorage {
   updatePetMood(petId: string, mood: string): Promise<Pet>;
   addPetXP(petId: string, xp: number): Promise<Pet>;
   performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }>;
+  applyStatDecay(petId: string): Promise<Pet>;
   
   // Shop & Inventory
   getAllShopItems(): Promise<ShopItem[]>;
@@ -287,9 +289,14 @@ export class MemStorage implements IStorage {
       age: insertPet.age ?? 0,
       evolutionStage: insertPet.evolutionStage ?? 1,
       mood: insertPet.mood ?? "happy",
+      isSick: insertPet.isSick ?? false,
       lastFed: insertPet.lastFed ?? now,
       lastPlayed: insertPet.lastPlayed ?? now,
       lastCleaned: insertPet.lastCleaned ?? now,
+      lastHungerDecay: insertPet.lastHungerDecay ?? now,
+      lastHappinessDecay: insertPet.lastHappinessDecay ?? now,
+      lastCleanlinessDecay: insertPet.lastCleanlinessDecay ?? now,
+      lastHealthDecay: insertPet.lastHealthDecay ?? now,
       lastUpdated: now,
       createdAt: now,
     };
@@ -385,6 +392,28 @@ export class MemStorage implements IStorage {
     };
     
     return { pet: updatedPet, user: updatedUser, cooldowns };
+  }
+
+  async applyStatDecay(petId: string): Promise<Pet> {
+    const pet = this.pets.get(petId);
+    if (!pet) throw new Error("Pet not found");
+    
+    // Calculate new stats based on time elapsed (per-stat timestamps)
+    const decayedStats = calculateStatDecay(pet);
+    
+    // Update pet with new stats and timestamps
+    pet.hunger = decayedStats.hunger;
+    pet.happiness = decayedStats.happiness;
+    pet.cleanliness = decayedStats.cleanliness;
+    pet.health = decayedStats.health;
+    pet.isSick = decayedStats.isSick;
+    pet.lastHungerDecay = decayedStats.newLastHungerDecay;
+    pet.lastHappinessDecay = decayedStats.newLastHappinessDecay;
+    pet.lastCleanlinessDecay = decayedStats.newLastCleanlinessDecay;
+    pet.lastHealthDecay = decayedStats.newLastHealthDecay;
+    
+    this.pets.set(petId, pet);
+    return pet;
   }
 
   // Shop & Inventory methods
@@ -761,6 +790,33 @@ export class DbStorage implements IStorage {
     };
     
     return { pet: updatedPet, user: updatedUser, cooldowns };
+  }
+
+  async applyStatDecay(petId: string): Promise<Pet> {
+    const pet = await this.getPet(petId);
+    if (!pet) throw new Error("Pet not found");
+    
+    // Calculate new stats based on time elapsed (per-stat timestamps)
+    const decayedStats = calculateStatDecay(pet);
+    
+    // Update pet with new stats in a single atomic database update
+    const result = await this.db.update(pets)
+      .set({
+        hunger: decayedStats.hunger,
+        happiness: decayedStats.happiness,
+        cleanliness: decayedStats.cleanliness,
+        health: decayedStats.health,
+        isSick: decayedStats.isSick,
+        lastHungerDecay: decayedStats.newLastHungerDecay,
+        lastHappinessDecay: decayedStats.newLastHappinessDecay,
+        lastCleanlinessDecay: decayedStats.newLastCleanlinessDecay,
+        lastHealthDecay: decayedStats.newLastHealthDecay,
+        lastUpdated: new Date(),
+      })
+      .where(eq(pets.id, petId))
+      .returning();
+    
+    return result[0];
   }
 
   // Shop & Inventory

@@ -525,18 +525,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Pet not found" });
       }
 
-      // Apply stat decay
-      const decayedPet = applyStatDecay(pet);
-      
-      // Update stats in storage with decay
-      pet = await storage.updatePetStats(pet.id, {
-        hunger: decayedPet.hunger,
-        happiness: decayedPet.happiness,
-        energy: decayedPet.energy,
-        cleanliness: decayedPet.cleanliness,
-      });
+      // Apply stat decay (atomically updates stats, health, isSick, lastDecayCheck)
+      pet = await storage.applyStatDecay(pet.id);
 
-      // Update mood based on stats
+      // Update mood based on current stats
       const newMood = calculateMood(pet.hunger, pet.happiness, pet.energy);
       if (newMood !== pet.mood) {
         pet = await storage.updatePetMood(pet.id, newMood);
@@ -552,10 +544,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pet/feed", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const pet = await storage.getPetByUserId(userId);
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
+
+      // Apply decay before action to ensure fresh stats
+      pet = await storage.applyStatDecay(pet.id);
 
       const user = await storage.getUser(userId);
       if (!user) {
@@ -596,10 +591,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pet/play", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const pet = await storage.getPetByUserId(userId);
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
+
+      // Apply decay before action to ensure fresh stats
+      pet = await storage.applyStatDecay(pet.id);
 
       const user = await storage.getUser(userId);
       if (!user) {
@@ -640,10 +638,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pet/clean", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const pet = await storage.getPetByUserId(userId);
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
+
+      // Apply decay before action to ensure fresh stats
+      pet = await storage.applyStatDecay(pet.id);
 
       const user = await storage.getUser(userId);
       if (!user) {
@@ -687,6 +688,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
+
+      // Apply decay before action to ensure fresh stats
+      pet = await storage.applyStatDecay(pet.id);
 
       pet = await storage.updatePetStats(pet.id, {
         energy: pet.energy + 30,
