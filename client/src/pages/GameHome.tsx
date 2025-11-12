@@ -43,7 +43,10 @@ export default function GameHome() {
 
   // Feed mutation
   const feedMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/pet/feed"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/pet/feed");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
@@ -80,7 +83,10 @@ export default function GameHome() {
 
   // Play mutation
   const playMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/pet/play"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/pet/play");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
@@ -116,7 +122,10 @@ export default function GameHome() {
 
   // Clean mutation
   const cleanMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/pet/clean"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/pet/clean");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
@@ -152,7 +161,10 @@ export default function GameHome() {
 
   // Sleep mutation
   const sleepMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/pet/sleep"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/pet/sleep");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
@@ -188,7 +200,10 @@ export default function GameHome() {
 
   // Daily reward mutation
   const dailyRewardMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/daily-reward"),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/daily-reward");
+      return await response.json();
+    },
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/user"], data);
       setDailyRewardClaimed(true);

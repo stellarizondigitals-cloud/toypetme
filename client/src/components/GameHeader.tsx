@@ -4,8 +4,8 @@ import { Settings, Bell, DollarSign, Gem } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 
 interface GameHeaderProps {
-  coins: number;
-  gems: number;
+  coins: number | undefined;
+  gems: number | undefined;
   notifications: number;
 }
 
@@ -24,7 +24,7 @@ export default function GameHeader({ coins, gems, notifications }: GameHeaderPro
             <div className="flex items-center gap-1 bg-card px-3 py-1.5 rounded-full border">
               <Gem className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold" data-testid="text-gems">
-                {gems.toLocaleString()}
+                {(gems ?? 0).toLocaleString()}
               </span>
             </div>
           </div>
