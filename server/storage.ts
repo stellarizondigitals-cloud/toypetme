@@ -9,7 +9,9 @@ import {
   type InsertInventory,
   PET_ACTIONS,
   type PetActionType,
-  calculateStatDecay
+  calculateStatDecay,
+  DAILY_LOGIN_BONUS,
+  MAX_COINS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
@@ -62,6 +64,7 @@ export interface IStorage {
   getShopItem(id: string): Promise<ShopItem | undefined>;
   getUserInventory(userId: string): Promise<Inventory[]>;
   addToInventory(userId: string, itemId: string, quantity: number): Promise<Inventory>;
+  purchaseItem(userId: string, itemId: string): Promise<{ user: User; inventory: Inventory }>;
   useInventoryItem(userId: string, itemId: string): Promise<Inventory | undefined>;
 }
 
@@ -230,7 +233,8 @@ export class MemStorage implements IStorage {
   async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
     const user = this.users.get(userId);
     if (!user) throw new Error("User not found");
-    user.coins = coins;
+    // Enforce MAX_COINS cap
+    user.coins = Math.min(coins, MAX_COINS);
     user.gems = gems;
     this.users.set(userId, user);
     return user;
@@ -259,8 +263,9 @@ export class MemStorage implements IStorage {
       user.dailyStreak = 1;
     }
     
-    const coinsEarned = 50 + (user.dailyStreak * 10);
-    user.coins += coinsEarned;
+    const coinsEarned = DAILY_LOGIN_BONUS + (user.dailyStreak * 10);
+    // Enforce MAX_COINS cap
+    user.coins = Math.min(user.coins + coinsEarned, MAX_COINS);
     user.lastDailyReward = now;
     this.users.set(userId, user);
     return user;
@@ -401,8 +406,8 @@ export class MemStorage implements IStorage {
     const xpResult = await this.addPetXP(petId, action.xpReward);
     updatedPet = xpResult.pet;
     
-    // Deduct coins
-    const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
+    // Add coins reward
+    const updatedUser = await this.updateUserCoins(userId, user.coins + action.coinReward, user.gems);
     
     // Calculate cooldowns
     const cooldowns: Record<string, number> = {
@@ -494,6 +499,26 @@ export class MemStorage implements IStorage {
       this.inventory.set(userId, userInv);
       return newInv;
     }
+  }
+
+  async purchaseItem(userId: string, itemId: string): Promise<{ user: User; inventory: Inventory }> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    const item = this.shopItems.get(itemId);
+    if (!item) throw new Error("Shop item not found");
+    
+    if (user.coins < item.price) {
+      throw new Error("Insufficient coins");
+    }
+    
+    // Deduct coins
+    const updatedUser = await this.updateUserCoins(userId, user.coins - item.price, user.gems);
+    
+    // Add to inventory
+    const inventoryItem = await this.addToInventory(userId, itemId, 1);
+    
+    return { user: updatedUser, inventory: inventoryItem };
   }
 
   async useInventoryItem(userId: string, itemId: string): Promise<Inventory | undefined> {
@@ -634,8 +659,10 @@ export class DbStorage implements IStorage {
   }
 
   async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
+    // Enforce MAX_COINS cap
+    const cappedCoins = Math.min(coins, MAX_COINS);
     const result = await this.db.update(users)
-      .set({ coins, gems })
+      .set({ coins: cappedCoins, gems })
       .where(eq(users.id, userId))
       .returning();
     return result[0];
@@ -659,13 +686,14 @@ export class DbStorage implements IStorage {
       }
     }
 
-    const baseReward = 50;
     const streakBonus = Math.min(newStreak * 10, 100);
-    const coinsReward = baseReward + streakBonus;
+    const coinsReward = DAILY_LOGIN_BONUS + streakBonus;
+    // Enforce MAX_COINS cap
+    const newCoins = Math.min(user.coins + coinsReward, MAX_COINS);
 
     const result = await this.db.update(users)
       .set({
-        coins: user.coins + coinsReward,
+        coins: newCoins,
         dailyStreak: newStreak,
         lastDailyReward: now,
       })
@@ -838,8 +866,8 @@ export class DbStorage implements IStorage {
     const xpResult = await this.addPetXP(petId, action.xpReward);
     updatedPet = xpResult.pet;
     
-    // Deduct coins
-    const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
+    // Add coins reward
+    const updatedUser = await this.updateUserCoins(userId, user.coins + action.coinReward, user.gems);
     
     // Calculate cooldowns
     const cooldowns: Record<string, number> = {
@@ -938,6 +966,26 @@ export class DbStorage implements IStorage {
         .returning();
       return result[0];
     }
+  }
+
+  async purchaseItem(userId: string, itemId: string): Promise<{ user: User; inventory: Inventory }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    const item = await this.getShopItem(itemId);
+    if (!item) throw new Error("Shop item not found");
+    
+    if (user.coins < item.price) {
+      throw new Error("Insufficient coins");
+    }
+    
+    // Deduct coins
+    const updatedUser = await this.updateUserCoins(userId, user.coins - item.price, user.gems);
+    
+    // Add to inventory
+    const inventoryItem = await this.addToInventory(userId, itemId, 1);
+    
+    return { user: updatedUser, inventory: inventoryItem };
   }
 
   async useInventoryItem(userId: string, itemId: string): Promise<Inventory | undefined> {
