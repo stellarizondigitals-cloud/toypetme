@@ -137,29 +137,120 @@ export type ShopItem = typeof shopItems.$inferSelect;
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
 
+// Daily login bonus
+export const DAILY_LOGIN_BONUS = 50;
+
+// Predefined shop items
+export const SHOP_ITEMS = [
+  // Food items ($10-50)
+  {
+    id: "food-apple",
+    name: "Crispy Apple",
+    description: "A fresh, juicy apple that restores hunger",
+    category: "food",
+    price: 10,
+    effect: JSON.stringify({ hunger: 15 }),
+    image: "🍎",
+  },
+  {
+    id: "food-burger",
+    name: "Deluxe Burger",
+    description: "A hearty burger that satisfies hunger",
+    category: "food",
+    price: 25,
+    effect: JSON.stringify({ hunger: 30 }),
+    image: "🍔",
+  },
+  {
+    id: "food-sushi",
+    name: "Premium Sushi",
+    description: "Exquisite sushi that fully restores hunger",
+    category: "food",
+    price: 50,
+    effect: JSON.stringify({ hunger: 50 }),
+    image: "🍣",
+  },
+  // Toys ($30-100)
+  {
+    id: "toy-ball",
+    name: "Bouncy Ball",
+    description: "A fun ball that increases happiness",
+    category: "toy",
+    price: 30,
+    effect: JSON.stringify({ happiness: 20 }),
+    image: "⚽",
+  },
+  {
+    id: "toy-robot",
+    name: "Robot Companion",
+    description: "An entertaining robot that boosts happiness",
+    category: "toy",
+    price: 60,
+    effect: JSON.stringify({ happiness: 35 }),
+    image: "🤖",
+  },
+  {
+    id: "toy-castle",
+    name: "Play Castle",
+    description: "A magnificent castle that maximizes happiness",
+    category: "toy",
+    price: 100,
+    effect: JSON.stringify({ happiness: 50 }),
+    image: "🏰",
+  },
+  // Cosmetics ($100-500)
+  {
+    id: "cosmetic-hat",
+    name: "Fancy Hat",
+    description: "A stylish hat accessory for your pet",
+    category: "cosmetic",
+    price: 100,
+    effect: JSON.stringify({ happiness: 10 }),
+    image: "🎩",
+  },
+  {
+    id: "cosmetic-crown",
+    name: "Royal Crown",
+    description: "A majestic crown fit for royalty",
+    category: "cosmetic",
+    price: 250,
+    effect: JSON.stringify({ happiness: 25 }),
+    image: "👑",
+  },
+  {
+    id: "cosmetic-sparkles",
+    name: "Sparkle Effect",
+    description: "A magical sparkle effect for your pet",
+    category: "cosmetic",
+    price: 500,
+    effect: JSON.stringify({ happiness: 50, energy: 25 }),
+    image: "✨",
+  },
+] as const;
+
 // Pet action configuration
 export const PET_ACTIONS = {
   feed: {
     statIncrease: { hunger: 20 },
-    coinCost: 10,
+    coinReward: 10,
     cooldownMinutes: 5,
     xpReward: 5,
   },
   play: {
     statIncrease: { happiness: 15, energy: -10 },
-    coinCost: 15,
+    coinReward: 10,
     cooldownMinutes: 5,
     xpReward: 10,
   },
   clean: {
     statIncrease: { cleanliness: 25 },
-    coinCost: 12,
+    coinReward: 10,
     cooldownMinutes: 5,
     xpReward: 8,
   },
   sleep: {
     statIncrease: { energy: 30 },
-    coinCost: 0,
+    coinReward: 10,
     cooldownMinutes: 5,
     xpReward: 5,
   },
