@@ -550,17 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check coins
-      if (user.coins < action.coinCost) {
-        return res.status(400).json({
-          error: "Not enough coins",
-          code: "INSUFFICIENT_FUNDS",
-          requiredCoins: action.coinCost,
-          availableCoins: user.coins,
-        });
-      }
-
-      // Perform action
+      // Perform action (earns coins)
       const result = await storage.performPetAction(userId, pet.id, "feed");
       res.json(result);
     } catch (error) {
@@ -597,17 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check coins
-      if (user.coins < action.coinCost) {
-        return res.status(400).json({
-          error: "Not enough coins",
-          code: "INSUFFICIENT_FUNDS",
-          requiredCoins: action.coinCost,
-          availableCoins: user.coins,
-        });
-      }
-
-      // Perform action
+      // Perform action (earns coins)
       const result = await storage.performPetAction(userId, pet.id, "play");
       res.json(result);
     } catch (error) {
@@ -644,17 +624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check coins
-      if (user.coins < action.coinCost) {
-        return res.status(400).json({
-          error: "Not enough coins",
-          code: "INSUFFICIENT_FUNDS",
-          requiredCoins: action.coinCost,
-          availableCoins: user.coins,
-        });
-      }
-
-      // Perform action
+      // Perform action (earns coins)
       const result = await storage.performPetAction(userId, pet.id, "clean");
       res.json(result);
     } catch (error) {
@@ -666,7 +636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pet sleep
   app.post("/api/pet/sleep", requireAuth, async (req, res) => {
     try {
-      let pet = await storage.getPetByUserId(req.session.userId!);
+      const userId = req.session.userId!;
+      let pet = await storage.getPetByUserId(userId);
       if (!pet) {
         return res.status(404).json({ error: "Pet not found" });
       }
@@ -674,14 +645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply decay before action to ensure fresh stats
       pet = await storage.applyStatDecay(pet.id);
 
-      pet = await storage.updatePetStats(pet.id, {
-        energy: pet.energy + 30,
-      });
-
-      pet = await storage.addPetXP(pet.id, 5);
-
-      res.json(pet);
+      // Perform action (earns coins)
+      const result = await storage.performPetAction(userId, pet.id, "sleep");
+      res.json(result);
     } catch (error) {
+      console.error("Sleep error:", error);
       res.status(500).json({ error: "Failed to put pet to sleep" });
     }
   });
@@ -900,7 +868,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const happinessGained = Math.min(20, Math.floor(score / 10));
 
       await storage.updateUserCoins(user.id, user.coins + coinsEarned, user.gems);
-      pet = await storage.addPetXP(pet.id, xpEarned);
+      const xpResult = await storage.addPetXP(pet.id, xpEarned);
+      pet = xpResult.pet;
       pet = await storage.updatePetStats(pet.id, {
         happiness: Math.min(100, pet.happiness + happinessGained),
       });
@@ -908,6 +877,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ coinsEarned, happinessGained, xpEarned });
     } catch (error) {
       res.status(500).json({ error: "Failed to complete mini-game" });
+    }
+  });
+
+  // ===== SHOP & INVENTORY ROUTES =====
+
+  // Get all shop items
+  app.get("/api/shop", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getAllShopItems();
+      res.json(items);
+    } catch (error) {
+      console.error("Shop fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch shop items" });
+    }
+  });
+
+  // Purchase shop item
+  app.post("/api/shop/purchase", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { itemId } = req.body;
+
+      if (!itemId) {
+        return res.status(400).json({ error: "Item ID is required" });
+      }
+
+      const result = await storage.purchaseItem(userId, itemId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Purchase error:", error);
+      if (error.message === "Insufficient coins") {
+        return res.status(400).json({ error: "Not enough coins" });
+      }
+      if (error.message === "Shop item not found") {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      res.status(500).json({ error: "Failed to purchase item" });
+    }
+  });
+
+  // Get user inventory
+  app.get("/api/inventory", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const userInventory = await storage.getUserInventory(userId);
+      res.json(userInventory);
+    } catch (error) {
+      console.error("Inventory fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch inventory" });
+    }
+  });
+
+  // Use inventory item
+  app.post("/api/inventory/use", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { itemId } = req.body;
+
+      if (!itemId) {
+        return res.status(400).json({ error: "Item ID is required" });
+      }
+
+      let pet = await storage.getPetByUserId(userId);
+      if (!pet) {
+        return res.status(404).json({ error: "Pet not found" });
+      }
+
+      // Get the item details
+      const item = await storage.getShopItem(itemId);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+
+      // Use the item (decrements quantity)
+      const inventoryItem = await storage.useInventoryItem(userId, itemId);
+      if (!inventoryItem) {
+        return res.status(404).json({ error: "Item not in inventory or already used" });
+      }
+
+      // Apply item effects to pet
+      const effects = JSON.parse(item.effect);
+      const updates: any = {};
+      
+      for (const [stat, value] of Object.entries(effects)) {
+        const currentValue = pet[stat as keyof typeof pet] as number;
+        updates[stat] = Math.min(100, Math.max(0, currentValue + (value as number)));
+      }
+
+      pet = await storage.updatePetStats(pet.id, updates);
+
+      res.json({ pet, itemUsed: item, remainingQuantity: inventoryItem.quantity });
+    } catch (error) {
+      console.error("Use item error:", error);
+      res.status(500).json({ error: "Failed to use item" });
     }
   });
 
