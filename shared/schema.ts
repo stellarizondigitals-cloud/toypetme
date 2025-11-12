@@ -36,7 +36,7 @@ export const pets = pgTable("pets", {
   cleanliness: integer("cleanliness").notNull().default(100),
   health: integer("health").notNull().default(100),
   age: integer("age").notNull().default(0), // Age in days
-  evolutionStage: integer("evolution_stage").notNull().default(1), // 1=baby, 2=teen, 3=adult
+  evolutionStage: integer("evolution_stage").notNull().default(0), // 0=baby, 1=child, 2=teen, 3=adult
   mood: text("mood").notNull().default("happy"),
   isSick: boolean("is_sick").notNull().default(false),
   lastFed: timestamp("last_fed").default(sql`now()`),
@@ -166,6 +166,64 @@ export const PET_ACTIONS = {
 } as const;
 
 export type PetActionType = keyof typeof PET_ACTIONS;
+
+// Level and evolution configuration
+export const XP_PER_LEVEL = 100;
+export const EVOLUTION_THRESHOLDS = {
+  child: 5,   // Stage 0 → 1 at level 5
+  teen: 10,   // Stage 1 → 2 at level 10
+  adult: 20,  // Stage 2 → 3 at level 20
+} as const;
+
+export const EVOLUTION_STAGES = {
+  0: "Baby",
+  1: "Child", 
+  2: "Teen",
+  3: "Adult",
+} as const;
+
+// Calculate level and evolution progression from XP gain
+export function calculateLevelAndEvolution(
+  currentLevel: number,
+  currentXP: number,
+  currentStage: number,
+  xpGain: number
+): {
+  newLevel: number;
+  newXP: number;
+  newStage: number;
+  leveledUp: boolean;
+  evolved: boolean;
+} {
+  let level = currentLevel;
+  let xp = currentXP + xpGain;
+  let stage = currentStage;
+  const oldLevel = currentLevel;
+  const oldStage = currentStage;
+  
+  // Constant XP_PER_LEVEL threshold
+  while (xp >= XP_PER_LEVEL) {
+    level++;
+    xp -= XP_PER_LEVEL;
+  }
+  
+  // Evolution thresholds (check in descending order to get highest stage)
+  if (level >= EVOLUTION_THRESHOLDS.adult && stage < 3) {
+    stage = 3; // Adult
+  } else if (level >= EVOLUTION_THRESHOLDS.teen && stage < 2) {
+    stage = 2; // Teen
+  } else if (level >= EVOLUTION_THRESHOLDS.child && stage < 1) {
+    stage = 1; // Child
+  }
+  
+  return {
+    newLevel: level,
+    newXP: xp,
+    newStage: stage,
+    leveledUp: level > oldLevel,
+    evolved: stage > oldStage,
+  };
+}
 
 // Stat decay configuration
 export const STAT_DECAY = {

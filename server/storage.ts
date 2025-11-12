@@ -15,7 +15,7 @@ import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and } from "drizzle-orm";
-import { users, pets, shopItems, inventory } from "@shared/schema";
+import { users, pets, shopItems, inventory, calculateLevelAndEvolution } from "@shared/schema";
 
 export interface IStorage {
   // User operations
@@ -45,8 +45,16 @@ export interface IStorage {
     timestamps?: { lastFed?: Date; lastPlayed?: Date; lastCleaned?: Date }
   ): Promise<Pet>;
   updatePetMood(petId: string, mood: string): Promise<Pet>;
-  addPetXP(petId: string, xp: number): Promise<Pet>;
-  performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }>;
+  addPetXP(petId: string, xp: number): Promise<{ pet: Pet; leveledUp: boolean; evolved: boolean }>;
+  performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ 
+    pet: Pet; 
+    user: User; 
+    cooldowns: Record<string, number>;
+    leveledUp?: boolean;
+    evolved?: boolean;
+    newLevel?: number;
+    newStage?: number;
+  }>;
   applyStatDecay(petId: string): Promise<Pet>;
   
   // Shop & Inventory
@@ -334,22 +342,34 @@ export class MemStorage implements IStorage {
     return pet;
   }
 
-  async addPetXP(petId: string, xp: number): Promise<Pet> {
+  async addPetXP(petId: string, xpGain: number): Promise<{ pet: Pet; leveledUp: boolean; evolved: boolean }> {
     const pet = this.pets.get(petId);
     if (!pet) throw new Error("Pet not found");
     
-    pet.xp += xp;
-    const xpForNextLevel = pet.level * 100;
-    if (pet.xp >= xpForNextLevel) {
-      pet.level += 1;
-      pet.xp -= xpForNextLevel;
-    }
+    const result = calculateLevelAndEvolution(pet.level, pet.xp, pet.evolutionStage, xpGain);
+    
+    pet.level = result.newLevel;
+    pet.xp = result.newXP;
+    pet.evolutionStage = result.newStage;
     
     this.pets.set(petId, pet);
-    return pet;
+    
+    return {
+      pet,
+      leveledUp: result.leveledUp,
+      evolved: result.evolved,
+    };
   }
 
-  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }> {
+  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ 
+    pet: Pet; 
+    user: User; 
+    cooldowns: Record<string, number>;
+    leveledUp?: boolean;
+    evolved?: boolean;
+    newLevel?: number;
+    newStage?: number;
+  }> {
     const pet = this.pets.get(petId);
     if (!pet) throw new Error("Pet not found");
     if (pet.userId !== userId) throw new Error("Unauthorized");
@@ -377,8 +397,9 @@ export class MemStorage implements IStorage {
     // Update pet stats and timestamp
     let updatedPet = await this.updatePetStats(petId, stats, timestamps);
     
-    // Add XP
-    updatedPet = await this.addPetXP(petId, action.xpReward);
+    // Add XP and track level/evolution
+    const xpResult = await this.addPetXP(petId, action.xpReward);
+    updatedPet = xpResult.pet;
     
     // Deduct coins
     const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
@@ -391,7 +412,32 @@ export class MemStorage implements IStorage {
       sleep: 0,
     };
     
-    return { pet: updatedPet, user: updatedUser, cooldowns };
+    // Build response with evolution metadata
+    const response: {
+      pet: Pet;
+      user: User;
+      cooldowns: Record<string, number>;
+      leveledUp?: boolean;
+      evolved?: boolean;
+      newLevel?: number;
+      newStage?: number;
+    } = {
+      pet: updatedPet,
+      user: updatedUser,
+      cooldowns,
+    };
+    
+    if (xpResult.leveledUp) {
+      response.leveledUp = true;
+      response.newLevel = updatedPet.level;
+    }
+    
+    if (xpResult.evolved) {
+      response.evolved = true;
+      response.newStage = updatedPet.evolutionStage;
+    }
+    
+    return response;
   }
 
   async applyStatDecay(petId: string): Promise<Pet> {
@@ -726,27 +772,40 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async addPetXP(petId: string, xp: number): Promise<Pet> {
+  async addPetXP(petId: string, xpGain: number): Promise<{ pet: Pet; leveledUp: boolean; evolved: boolean }> {
     const pet = await this.getPet(petId);
     if (!pet) throw new Error("Pet not found");
-
-    const newXP = pet.xp + xp;
-    let newLevel = pet.level;
-    let remainingXP = newXP;
-
-    while (remainingXP >= newLevel * 100) {
-      remainingXP -= newLevel * 100;
-      newLevel++;
-    }
-
-    const result = await this.db.update(pets)
-      .set({ xp: remainingXP, level: newLevel })
+    
+    const result = calculateLevelAndEvolution(pet.level, pet.xp, pet.evolutionStage, xpGain);
+    
+    // Atomic update: level, xp, evolutionStage in single query
+    const updated = await this.db.update(pets)
+      .set({
+        level: result.newLevel,
+        xp: result.newXP,
+        evolutionStage: result.newStage,
+      })
       .where(eq(pets.id, petId))
       .returning();
-    return result[0];
+    
+    if (!updated[0]) throw new Error("Failed to update pet");
+    
+    return {
+      pet: updated[0],
+      leveledUp: result.leveledUp,
+      evolved: result.evolved,
+    };
   }
 
-  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ pet: Pet; user: User; cooldowns: Record<string, number> }> {
+  async performPetAction(userId: string, petId: string, actionType: PetActionType): Promise<{ 
+    pet: Pet; 
+    user: User; 
+    cooldowns: Record<string, number>;
+    leveledUp?: boolean;
+    evolved?: boolean;
+    newLevel?: number;
+    newStage?: number;
+  }> {
     const pet = await this.getPet(petId);
     if (!pet) throw new Error("Pet not found");
     if (pet.userId !== userId) throw new Error("Unauthorized");
@@ -775,8 +834,9 @@ export class DbStorage implements IStorage {
     // Update pet stats and timestamp
     let updatedPet = await this.updatePetStats(petId, stats, timestamps);
     
-    // Add XP
-    updatedPet = await this.addPetXP(petId, action.xpReward);
+    // Add XP and track level/evolution
+    const xpResult = await this.addPetXP(petId, action.xpReward);
+    updatedPet = xpResult.pet;
     
     // Deduct coins
     const updatedUser = await this.updateUserCoins(userId, user.coins - action.coinCost, user.gems);
@@ -789,7 +849,32 @@ export class DbStorage implements IStorage {
       sleep: 0,
     };
     
-    return { pet: updatedPet, user: updatedUser, cooldowns };
+    // Build response with evolution metadata
+    const response: {
+      pet: Pet;
+      user: User;
+      cooldowns: Record<string, number>;
+      leveledUp?: boolean;
+      evolved?: boolean;
+      newLevel?: number;
+      newStage?: number;
+    } = {
+      pet: updatedPet,
+      user: updatedUser,
+      cooldowns,
+    };
+    
+    if (xpResult.leveledUp) {
+      response.leveledUp = true;
+      response.newLevel = updatedPet.level;
+    }
+    
+    if (xpResult.evolved) {
+      response.evolved = true;
+      response.newStage = updatedPet.evolutionStage;
+    }
+    
+    return response;
   }
 
   async applyStatDecay(petId: string): Promise<Pet> {
