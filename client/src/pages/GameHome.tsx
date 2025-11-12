@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
@@ -10,6 +10,8 @@ import EvolutionAnimation from "@/components/EvolutionAnimation";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
+import { DAILY_LOGIN_BONUS } from "@shared/schema";
 
 export default function GameHome() {
   const { toast } = useToast();
@@ -24,6 +26,7 @@ export default function GameHome() {
     newStage: 0,
     newLevel: 1,
   });
+  const [dailyRewardClaimed, setDailyRewardClaimed] = useState(false);
 
   // Fetch user data
   const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
@@ -61,7 +64,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Fed your pet!",
-          description: "Your pet loves the food! +20 Hunger, +5 XP",
+          description: "Your pet loves the food! +20 Hunger, +5 XP, +$5",
         });
       }
     },
@@ -97,7 +100,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Playing with your pet!",
-          description: "So much fun! +15 Happiness, +10 XP",
+          description: "So much fun! +15 Happiness, +10 XP, +$10",
         });
       }
     },
@@ -133,7 +136,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Cleaned your pet!",
-          description: "All sparkly and clean! +25 Cleanliness, +8 XP",
+          description: "All sparkly and clean! +25 Cleanliness, +8 XP, +$8",
         });
       }
     },
@@ -169,7 +172,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Pet is resting...",
-          description: "Sweet dreams! +30 Energy, +5 XP",
+          description: "Sweet dreams! +30 Energy, +5 XP, +$5",
         });
       }
     },
@@ -182,6 +185,31 @@ export default function GameHome() {
       });
     },
   });
+
+  // Daily reward mutation
+  const dailyRewardMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/daily-reward"),
+    onSuccess: (data: any) => {
+      queryClient.setQueryData(["/api/user"], data);
+      setDailyRewardClaimed(true);
+      toast({
+        title: "🎁 Daily Login Bonus!",
+        description: `Welcome back! You earned ${formatCurrency(DAILY_LOGIN_BONUS)}`,
+        duration: 5000,
+      });
+    },
+    onError: () => {
+      // Silently fail if already claimed today
+      setDailyRewardClaimed(true);
+    },
+  });
+
+  // Attempt to claim daily reward on mount
+  useEffect(() => {
+    if (user && !dailyRewardClaimed) {
+      dailyRewardMutation.mutate();
+    }
+  }, [user?.id]);
 
   if (userLoading || petLoading) {
     return (
