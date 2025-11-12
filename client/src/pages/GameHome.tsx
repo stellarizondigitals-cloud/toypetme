@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
@@ -5,12 +6,24 @@ import ActionButtons from "@/components/ActionButtons";
 import QuickActions from "@/components/QuickActions";
 import BottomTabNav from "@/components/BottomTabNav";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
+import EvolutionAnimation from "@/components/EvolutionAnimation";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
 
 export default function GameHome() {
   const { toast } = useToast();
+  const [evolutionState, setEvolutionState] = useState<{
+    isOpen: boolean;
+    petName: string;
+    newStage: number;
+    newLevel: number;
+  }>({
+    isOpen: false,
+    petName: "",
+    newStage: 0,
+    newLevel: 1,
+  });
 
   // Fetch user data
   const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
@@ -31,10 +44,26 @@ export default function GameHome() {
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
-      toast({
-        title: "Fed your pet!",
-        description: "Your pet loves the food! +20 Hunger, +5 XP",
-      });
+      
+      // Handle evolution
+      if (data.evolved) {
+        setEvolutionState({
+          isOpen: true,
+          petName: data.pet.name,
+          newStage: data.newStage,
+          newLevel: data.pet.level,
+        });
+      } else if (data.leveledUp) {
+        toast({
+          title: "🎉 Level Up!",
+          description: `${data.pet.name} reached level ${data.newLevel}! +5 XP`,
+        });
+      } else {
+        toast({
+          title: "Fed your pet!",
+          description: "Your pet loves the food! +20 Hunger, +5 XP",
+        });
+      }
     },
     onError: (error: any) => {
       const message = error.message || "Failed to feed pet";
@@ -52,10 +81,25 @@ export default function GameHome() {
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
-      toast({
-        title: "Playing with your pet!",
-        description: "So much fun! +15 Happiness, +10 XP",
-      });
+      
+      if (data.evolved) {
+        setEvolutionState({
+          isOpen: true,
+          petName: data.pet.name,
+          newStage: data.newStage,
+          newLevel: data.pet.level,
+        });
+      } else if (data.leveledUp) {
+        toast({
+          title: "🎉 Level Up!",
+          description: `${data.pet.name} reached level ${data.newLevel}! +10 XP`,
+        });
+      } else {
+        toast({
+          title: "Playing with your pet!",
+          description: "So much fun! +15 Happiness, +10 XP",
+        });
+      }
     },
     onError: (error: any) => {
       const message = error.message || "Failed to play with pet";
@@ -73,10 +117,25 @@ export default function GameHome() {
     onSuccess: (data: any) => {
       queryClient.setQueryData(["/api/pet"], data.pet);
       queryClient.setQueryData(["/api/user"], data.user);
-      toast({
-        title: "Cleaned your pet!",
-        description: "All sparkly and clean! +25 Cleanliness, +8 XP",
-      });
+      
+      if (data.evolved) {
+        setEvolutionState({
+          isOpen: true,
+          petName: data.pet.name,
+          newStage: data.newStage,
+          newLevel: data.pet.level,
+        });
+      } else if (data.leveledUp) {
+        toast({
+          title: "🎉 Level Up!",
+          description: `${data.pet.name} reached level ${data.newLevel}! +8 XP`,
+        });
+      } else {
+        toast({
+          title: "Cleaned your pet!",
+          description: "All sparkly and clean! +25 Cleanliness, +8 XP",
+        });
+      }
     },
     onError: (error: any) => {
       const message = error.message || "Failed to clean pet";
@@ -91,13 +150,28 @@ export default function GameHome() {
   // Sleep mutation
   const sleepMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/pet/sleep"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Pet is resting...",
-        description: "Sweet dreams! +30 Energy, +5 XP",
-      });
+    onSuccess: (data: any) => {
+      queryClient.setQueryData(["/api/pet"], data.pet);
+      queryClient.setQueryData(["/api/user"], data.user);
+      
+      if (data.evolved) {
+        setEvolutionState({
+          isOpen: true,
+          petName: data.pet.name,
+          newStage: data.newStage,
+          newLevel: data.pet.level,
+        });
+      } else if (data.leveledUp) {
+        toast({
+          title: "🎉 Level Up!",
+          description: `${data.pet.name} reached level ${data.newLevel}! +5 XP`,
+        });
+      } else {
+        toast({
+          title: "Pet is resting...",
+          description: "Sweet dreams! +30 Energy, +5 XP",
+        });
+      }
     },
     onError: (error: any) => {
       const message = error.message || "Failed to put pet to sleep";
@@ -157,6 +231,7 @@ export default function GameHome() {
           pet={pet}
           size="large"
           showStats={true}
+          showXP={true}
         />
         
         <ActionButtons
@@ -172,6 +247,14 @@ export default function GameHome() {
       </main>
       
       <BottomTabNav />
+      
+      <EvolutionAnimation
+        isOpen={evolutionState.isOpen}
+        onClose={() => setEvolutionState(prev => ({ ...prev, isOpen: false }))}
+        petName={evolutionState.petName}
+        newStage={evolutionState.newStage}
+        newLevel={evolutionState.newLevel}
+      />
     </div>
   );
 }
