@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Bell, Coins, Gem } from "lucide-react";
+import { Settings, Bell, DollarSign, Gem } from "lucide-react";
 
 interface GameHeaderProps {
   coins: number;
@@ -15,9 +15,9 @@ export default function GameHeader({ coins, gems, notifications }: GameHeaderPro
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-card px-3 py-1.5 rounded-full border">
-              <Coins className="w-4 h-4 text-chart-4" />
+              <DollarSign className="w-4 h-4 text-green-600" />
               <span className="text-sm font-semibold" data-testid="text-coins">
-                {coins.toLocaleString()}
+                ${coins.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-1 bg-card px-3 py-1.5 rounded-full border">

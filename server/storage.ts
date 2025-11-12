@@ -11,7 +11,8 @@ import {
   type PetActionType,
   calculateStatDecay,
   DAILY_LOGIN_BONUS,
-  MAX_COINS
+  MAX_COINS,
+  SHOP_ITEMS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
@@ -83,45 +84,8 @@ export class MemStorage implements IStorage {
   }
 
   private initializeShopItems() {
-    const items: ShopItem[] = [
-      {
-        id: randomUUID(),
-        name: "Basic Food",
-        description: "Fills your pet's belly",
-        category: "food",
-        price: 10,
-        effect: JSON.stringify({ hunger: 25 }),
-        image: null,
-      },
-      {
-        id: randomUUID(),
-        name: "Premium Food",
-        description: "Delicious meal that makes pets happy",
-        category: "food",
-        price: 25,
-        effect: JSON.stringify({ hunger: 40, happiness: 10 }),
-        image: null,
-      },
-      {
-        id: randomUUID(),
-        name: "Ball Toy",
-        description: "A fun toy to play with",
-        category: "toy",
-        price: 30,
-        effect: JSON.stringify({ happiness: 20, energy: -5 }),
-        image: null,
-      },
-      {
-        id: randomUUID(),
-        name: "Energy Drink",
-        description: "Restores pet's energy",
-        category: "food",
-        price: 20,
-        effect: JSON.stringify({ energy: 35 }),
-        image: null,
-      },
-    ];
-    items.forEach(item => this.shopItems.set(item.id, item));
+    // Load canonical shop catalog (9 items across Food/Toys/Cosmetics)
+    SHOP_ITEMS.forEach(item => this.shopItems.set(item.id, item));
   }
 
   // User methods

@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ShopItem, User } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ShoppingBag, Sparkles } from "lucide-react";
+import { DollarSign, ShoppingBag, Sparkles } from "lucide-react";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
 
@@ -21,7 +21,7 @@ export default function Shop() {
 
   const buyMutation = useMutation({
     mutationFn: (itemId: string) =>
-      apiRequest("POST", "/api/shop/buy", { itemId }),
+      apiRequest("POST", "/api/shop/purchase", { itemId }),
     onSuccess: (_, itemId) => {
       const item = shopItems.find((i) => i.id === itemId);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -34,7 +34,7 @@ export default function Shop() {
     onError: (error: any) => {
       toast({
         title: "Purchase Failed",
-        description: error.message || "Not enough coins",
+        description: error.message || "Not enough money",
         variant: "destructive",
       });
     },
@@ -43,7 +43,7 @@ export default function Shop() {
   const categories = [
     { id: "food", label: "Food", icon: "🍎" },
     { id: "toy", label: "Toys", icon: "⚽" },
-    { id: "care", label: "Care", icon: "🧼" },
+    { id: "cosmetic", label: "Cosmetics", icon: "✨" },
   ];
 
   const groupedItems = shopItems.reduce((acc, item) => {
@@ -108,8 +108,8 @@ export default function Shop() {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-center gap-1 text-yellow-600 font-bold">
-                      <Coins className="w-4 h-4" />
+                    <div className="flex items-center justify-center gap-1 text-green-600 font-bold">
+                      <DollarSign className="w-4 h-4" />
                       <span>{item.price}</span>
                     </div>
 
@@ -122,7 +122,7 @@ export default function Shop() {
                       size="sm"
                       data-testid={`button-buy-${item.id}`}
                     >
-                      {(user?.coins || 0) < item.price ? "Not Enough Coins" : "Buy"}
+                      {(user?.coins || 0) < item.price ? "Not Enough Money" : "Buy"}
                     </Button>
                   </Card>
                 ))}
