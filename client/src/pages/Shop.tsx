@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DollarSign, ShoppingBag, Sparkles } from "lucide-react";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Shop() {
   const { toast } = useToast();
@@ -109,8 +110,7 @@ export default function Shop() {
                     </div>
 
                     <div className="flex items-center justify-center gap-1 text-green-600 font-bold">
-                      <DollarSign className="w-4 h-4" />
-                      <span>{item.price}</span>
+                      <span>{formatCurrency(item.price)}</span>
                     </div>
 
                     <Button

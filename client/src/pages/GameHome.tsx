@@ -10,8 +10,8 @@ import EvolutionAnimation from "@/components/EvolutionAnimation";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
-import { formatCurrency } from "@/lib/currency";
-import { DAILY_LOGIN_BONUS } from "@shared/schema";
+import { formatCurrency, formatCoinReward } from "@/lib/currency";
+import { DAILY_LOGIN_BONUS, PET_ACTIONS } from "@shared/schema";
 
 export default function GameHome() {
   const { toast } = useToast();
@@ -64,7 +64,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Fed your pet!",
-          description: "Your pet loves the food! +20 Hunger, +5 XP, +$5",
+          description: `Your pet loves the food! +20 Hunger, +5 XP, ${formatCoinReward(PET_ACTIONS.feed.coinReward)}`,
         });
       }
     },
@@ -100,7 +100,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Playing with your pet!",
-          description: "So much fun! +15 Happiness, +10 XP, +$10",
+          description: `So much fun! +15 Happiness, +10 XP, ${formatCoinReward(PET_ACTIONS.play.coinReward)}`,
         });
       }
     },
@@ -136,7 +136,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Cleaned your pet!",
-          description: "All sparkly and clean! +25 Cleanliness, +8 XP, +$8",
+          description: `All sparkly and clean! +25 Cleanliness, +8 XP, ${formatCoinReward(PET_ACTIONS.clean.coinReward)}`,
         });
       }
     },
@@ -172,7 +172,7 @@ export default function GameHome() {
       } else {
         toast({
           title: "Pet is resting...",
-          description: "Sweet dreams! +30 Energy, +5 XP, +$5",
+          description: `Sweet dreams! +30 Energy, +5 XP, ${formatCoinReward(PET_ACTIONS.sleep.coinReward)}`,
         });
       }
     },
