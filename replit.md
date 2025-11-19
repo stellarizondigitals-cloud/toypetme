@@ -8,6 +8,47 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
+**November 19, 2025 - Ad Integration Placeholder (Phase 4 - Prompt 10)**
+- Implemented ad watching system with simulated 30-second ads for free users
+- Database schema:
+  - Added `adsWatchedToday: integer` field to users table (default: 0)
+  - Added `lastAdDate: timestamp` field to track daily reset
+  - Database migration via `npm run db:push` successfully applied
+- Backend implementation:
+  - Added `watchAdBonus(userId)` method to IStorage interface (both MemStorage and DbStorage)
+  - Daily reset logic: Resets adsWatchedToday to 0 at midnight
+  - 5 ads per day limit enforcement
+  - 50 coins per ad reward (respects MAX_COINS cap)
+  - Created API endpoint: POST /api/ads/watch-bonus (protected, returns user, coinsEarned, adsRemaining)
+  - Error handling: 403 for premium users, 429 for daily limit exceeded
+- Frontend implementation:
+  - Created AdBanner component with:
+    - Hidden for premium users (returns null if user.premium === true)
+    - Banner display: "Earn Bonus Coins" title, "X of 5 ads available today" counter
+    - "Watch Ad for Bonus" button (+50 Coins)
+    - 30-second countdown simulation with Clock icon animation
+    - Animated progress bar during ad watching
+    - Button disabled when limit reached ("Limit Reached" text)
+    - Toast notifications on success/error
+    - Interval cleanup with useRef to prevent memory leaks
+    - Dark mode support for gradients, borders, and icons
+  - Added AdBanner to GameHome page (bottom of main pet screen, before BottomTabNav)
+  - Only visible for non-premium users
+- Economic balance:
+  - Max 250 coins per day from ads (5 ads × 50 coins)
+  - Complements existing earning methods (pet actions, daily login)
+- Premium differentiation:
+  - Free users: See ad banner, can watch up to 5 ads/day
+  - Premium users: No ads shown at all (clean experience)
+- Testing:
+  - ✅ Free users can watch ads and earn coins correctly
+  - ✅ 30-second simulation works with countdown and progress bar
+  - ✅ Daily limit enforced (5 ads max)
+  - ✅ Premium users see NO ads (component hidden)
+  - ✅ All end-to-end tests passing
+- Architect approved: Clean implementation, proper security, good economic balance
+- Related files: `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`, `client/src/components/AdBanner.tsx`, `client/src/pages/GameHome.tsx`
+
 **November 12, 2025 - Premium Monetization Features (Phase 4 - Prompt 9)**
 - Implemented premium subscription system with manual toggle for testing
 - Database schema:
