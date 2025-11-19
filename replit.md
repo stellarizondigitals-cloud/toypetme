@@ -6,6 +6,34 @@ ToyPetMe is a mobile-first virtual pet game inspired by Tamagotchi and idle game
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Updates
+
+**November 12, 2025 - Premium Monetization Features (Phase 4 - Prompt 9)**
+- Implemented premium subscription system with manual toggle for testing
+- Database schema:
+  - Added `premium: boolean` field to users table (default: false)
+  - Database migration via `npm run db:push` successfully applied
+- Backend implementation:
+  - Added `togglePremium(userId)` method to IStorage interface (both MemStorage and DbStorage)
+  - Created API endpoint: POST /api/user/toggle-premium (protected, returns updated user)
+- Frontend implementation:
+  - Created GoPremium page (/premium) showing 6 premium benefits
+  - Updated bottom navigation: Replaced Profile tab with Premium tab
+  - Added premium badge to GameHeader (Crown icon + "Premium" text)
+  - All pages pass premium prop to GameHeader for consistent badge display
+  - Profile page fixed to use `/api/user` query for full user object
+- Premium benefits listed:
+  - Unlimited pet slots (free users: 1 pet)
+  - Exclusive pet types
+  - 2x coin earnings
+  - Rare evolution paths
+  - No advertisements
+  - Premium badge (IMPLEMENTED ✅, others ready for future implementation)
+- Testing mode: Manual toggle button allows instant premium activation/deactivation
+- Ready for future payment integration (Stripe/payment services)
+- Architect approved: Clean separation, consistent badge across all pages
+- Related files: `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`, `client/src/pages/GoPremium.tsx`, `client/src/components/GameHeader.tsx`, `client/src/components/BottomTabNav.tsx`, `client/src/App.tsx`
+
 ## System Architecture
 
 ### Frontend Architecture
