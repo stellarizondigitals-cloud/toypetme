@@ -499,6 +499,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Toggle premium status (for testing)
+  app.post("/api/user/toggle-premium", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.togglePremium(req.session.userId!);
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle premium status" });
+    }
+  });
+
   // Get pet with decay applied
   app.get("/api/pet", requireAuth, async (req, res) => {
     try {
