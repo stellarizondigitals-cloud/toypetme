@@ -20,7 +20,7 @@ export default function Profile() {
   const { toast } = useToast();
 
   const { data: user, isLoading } = useQuery<User>({
-    queryKey: ["/api/auth/me"],
+    queryKey: ["/api/user"],
   });
 
   const logoutMutation = useMutation({
