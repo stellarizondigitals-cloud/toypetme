@@ -36,6 +36,7 @@ export interface IStorage {
   resetPassword(userId: string, passwordHash: string): Promise<User>;
   updateUserAuthType(userId: string, authType: string): Promise<User>;
   markEmailVerified(userId: string): Promise<User>;
+  togglePremium(userId: string): Promise<User>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -132,6 +133,7 @@ export class MemStorage implements IStorage {
       resetTokenExpiry: null,
       coins: 100,
       gems: 0,
+      premium: false,
       dailyStreak: 0,
       lastDailyReward: null,
       createdAt: new Date(),
@@ -190,6 +192,14 @@ export class MemStorage implements IStorage {
     const user = this.users.get(userId);
     if (!user) throw new Error("User not found");
     user.verified = true;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async togglePremium(userId: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    user.premium = !user.premium;
     this.users.set(userId, user);
     return user;
   }
@@ -722,6 +732,19 @@ export class DbStorage implements IStorage {
 
   async markEmailVerified(userId: string): Promise<User> {
     return this.verifyUser(userId);
+  }
+
+  async togglePremium(userId: string): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    const result = await this.db
+      .update(users)
+      .set({ premium: !user.premium })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return result[0];
   }
 
   // Pet operations
