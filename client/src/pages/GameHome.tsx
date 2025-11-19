@@ -4,6 +4,7 @@ import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
 import ActionButtons from "@/components/ActionButtons";
 import QuickActions from "@/components/QuickActions";
+import AdBanner from "@/components/AdBanner";
 import BottomTabNav from "@/components/BottomTabNav";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import EvolutionAnimation from "@/components/EvolutionAnimation";
@@ -288,6 +289,8 @@ export default function GameHome() {
         />
         
         <QuickActions />
+        
+        <AdBanner user={user} />
       </main>
       
       <BottomTabNav />
