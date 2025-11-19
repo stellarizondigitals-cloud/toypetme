@@ -69,6 +69,7 @@ export default function Shop() {
       <GameHeader
         coins={user?.coins || 0}
         gems={user?.gems || 0}
+        premium={user?.premium}
         notifications={0}
       />
 

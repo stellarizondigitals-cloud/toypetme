@@ -262,6 +262,7 @@ export default function GameHome() {
       <GameHeader 
         coins={user.coins} 
         gems={user.gems} 
+        premium={user.premium}
         notifications={0} 
       />
       

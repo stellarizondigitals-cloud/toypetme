@@ -1,15 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Bell, DollarSign, Gem } from "lucide-react";
+import { Settings, Bell, DollarSign, Gem, Crown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 
 interface GameHeaderProps {
   coins: number | undefined;
   gems: number | undefined;
+  premium?: boolean;
   notifications: number;
 }
 
-export default function GameHeader({ coins, gems, notifications }: GameHeaderProps) {
+export default function GameHeader({ coins, gems, premium, notifications }: GameHeaderProps) {
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
       <div className="max-w-2xl mx-auto px-4 py-3">
@@ -27,6 +28,12 @@ export default function GameHeader({ coins, gems, notifications }: GameHeaderPro
                 {(gems ?? 0).toLocaleString()}
               </span>
             </div>
+            {premium && (
+              <Badge variant="default" className="gap-1" data-testid="badge-premium">
+                <Crown className="w-3 h-3" />
+                Premium
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
