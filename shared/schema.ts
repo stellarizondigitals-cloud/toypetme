@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   resetTokenExpiry: timestamp("reset_token_expiry"),
   coins: integer("coins").notNull().default(100),
   gems: integer("gems").notNull().default(0),
+  premium: boolean("premium").notNull().default(false),
   dailyStreak: integer("daily_streak").notNull().default(0),
   lastDailyReward: timestamp("last_daily_reward"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
