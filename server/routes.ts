@@ -510,6 +510,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Watch ad for bonus (free users only)
+  app.post("/api/ads/watch-bonus", requireAuth, async (req, res) => {
+    try {
+      const result = await storage.watchAdBonus(req.session.userId!);
+      const { passwordHash: _, ...userWithoutPassword } = result.user;
+      res.json({
+        user: userWithoutPassword,
+        coinsEarned: result.coinsEarned,
+        adsRemaining: result.adsRemaining,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to watch ad";
+      if (errorMessage === "Premium users cannot watch ads") {
+        res.status(403).json({ error: errorMessage });
+      } else if (errorMessage === "Daily ad limit reached") {
+        res.status(429).json({ error: errorMessage });
+      } else {
+        res.status(500).json({ error: errorMessage });
+      }
+    }
+  });
+
   // Get pet with decay applied
   app.get("/api/pet", requireAuth, async (req, res) => {
     try {

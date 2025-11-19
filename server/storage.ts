@@ -37,6 +37,7 @@ export interface IStorage {
   updateUserAuthType(userId: string, authType: string): Promise<User>;
   markEmailVerified(userId: string): Promise<User>;
   togglePremium(userId: string): Promise<User>;
+  watchAdBonus(userId: string): Promise<{ user: User; coinsEarned: number; adsRemaining: number }>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -136,6 +137,8 @@ export class MemStorage implements IStorage {
       premium: false,
       dailyStreak: 0,
       lastDailyReward: null,
+      adsWatchedToday: 0,
+      lastAdDate: null,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -202,6 +205,48 @@ export class MemStorage implements IStorage {
     user.premium = !user.premium;
     this.users.set(userId, user);
     return user;
+  }
+
+  async watchAdBonus(userId: string): Promise<{ user: User; coinsEarned: number; adsRemaining: number }> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Premium users don't see ads
+    if (user.premium) {
+      throw new Error("Premium users cannot watch ads");
+    }
+    
+    // Check if we need to reset daily ad count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastAdDate = user.lastAdDate ? new Date(user.lastAdDate) : null;
+    const shouldReset = !lastAdDate || lastAdDate < today;
+    
+    if (shouldReset) {
+      user.adsWatchedToday = 0;
+      user.lastAdDate = new Date();
+    }
+    
+    // Check daily limit (max 5 ads per day)
+    const MAX_ADS_PER_DAY = 5;
+    if (user.adsWatchedToday >= MAX_ADS_PER_DAY) {
+      throw new Error("Daily ad limit reached");
+    }
+    
+    // Award coins (50 coins per ad, respecting MAX_COINS cap)
+    const AD_BONUS = 50;
+    const newCoins = Math.min(user.coins + AD_BONUS, MAX_COINS);
+    const coinsEarned = newCoins - user.coins;
+    
+    user.coins = newCoins;
+    user.adsWatchedToday += 1;
+    user.lastAdDate = new Date();
+    
+    this.users.set(userId, user);
+    
+    const adsRemaining = MAX_ADS_PER_DAY - user.adsWatchedToday;
+    
+    return { user, coinsEarned, adsRemaining };
   }
 
   async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
@@ -745,6 +790,52 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result[0];
+  }
+
+  async watchAdBonus(userId: string): Promise<{ user: User; coinsEarned: number; adsRemaining: number }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Premium users don't see ads
+    if (user.premium) {
+      throw new Error("Premium users cannot watch ads");
+    }
+    
+    // Check if we need to reset daily ad count
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastAdDate = user.lastAdDate ? new Date(user.lastAdDate) : null;
+    const shouldReset = !lastAdDate || lastAdDate < today;
+    
+    let adsWatchedToday = user.adsWatchedToday;
+    if (shouldReset) {
+      adsWatchedToday = 0;
+    }
+    
+    // Check daily limit (max 5 ads per day)
+    const MAX_ADS_PER_DAY = 5;
+    if (adsWatchedToday >= MAX_ADS_PER_DAY) {
+      throw new Error("Daily ad limit reached");
+    }
+    
+    // Award coins (50 coins per ad, respecting MAX_COINS cap)
+    const AD_BONUS = 50;
+    const newCoins = Math.min(user.coins + AD_BONUS, MAX_COINS);
+    const coinsEarned = newCoins - user.coins;
+    
+    const result = await this.db
+      .update(users)
+      .set({ 
+        coins: newCoins,
+        adsWatchedToday: adsWatchedToday + 1,
+        lastAdDate: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    const adsRemaining = MAX_ADS_PER_DAY - (adsWatchedToday + 1);
+    
+    return { user: result[0], coinsEarned, adsRemaining };
   }
 
   // Pet operations

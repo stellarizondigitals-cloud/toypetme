@@ -20,6 +20,8 @@ export const users = pgTable("users", {
   premium: boolean("premium").notNull().default(false),
   dailyStreak: integer("daily_streak").notNull().default(0),
   lastDailyReward: timestamp("last_daily_reward"),
+  adsWatchedToday: integer("ads_watched_today").notNull().default(0),
+  lastAdDate: timestamp("last_ad_date"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
