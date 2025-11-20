@@ -74,6 +74,33 @@ export const inventory = pgTable("inventory", {
   quantity: integer("quantity").notNull().default(1),
 });
 
+// Challenges - predefined challenge types
+export const challenges = pgTable("challenges", {
+  id: varchar("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // "feed", "play", "clean", "sleep", "happiness", "health", "energy"
+  target: integer("target").notNull(), // Number of times or target value
+  coinReward: integer("coin_reward").notNull(), // 50-100 coins
+  xpReward: integer("xp_reward").notNull(), // XP reward
+});
+
+// User daily challenges
+export const userChallenges = pgTable("user_challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  challengeId: varchar("challenge_id").notNull().references(() => challenges.id),
+  progress: integer("progress").notNull().default(0),
+  completed: boolean("completed").notNull().default(false),
+  claimed: boolean("claimed").notNull().default(false), // Whether reward has been claimed
+  assignedDate: timestamp("assigned_date").notNull().default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+  claimedAt: timestamp("claimed_at"),
+}, (table) => ({
+  userIdIdx: index("user_challenges_user_id_idx").on(table.userId),
+  assignedDateIdx: index("user_challenges_assigned_date_idx").on(table.assignedDate),
+}));
+
 // Schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -122,6 +149,13 @@ export const insertInventorySchema = createInsertSchema(inventory).omit({
   id: true,
 });
 
+export const insertChallengeSchema = createInsertSchema(challenges);
+
+export const insertUserChallengeSchema = createInsertSchema(userChallenges).omit({
+  id: true,
+  assignedDate: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -139,6 +173,12 @@ export type ShopItem = typeof shopItems.$inferSelect;
 
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
+
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type Challenge = typeof challenges.$inferSelect;
+
+export type InsertUserChallenge = z.infer<typeof insertUserChallengeSchema>;
+export type UserChallenge = typeof userChallenges.$inferSelect;
 
 // Daily login bonus and coin cap
 export const DAILY_LOGIN_BONUS = 50;
@@ -319,6 +359,94 @@ export function calculateLevelAndEvolution(
     evolved: stage > oldStage,
   };
 }
+
+// Predefined daily challenges
+export const DAILY_CHALLENGES: Challenge[] = [
+  // Action-based challenges (feed, play, clean, sleep)
+  {
+    id: "feed-5",
+    name: "Hungry Pet",
+    description: "Feed your pet 5 times",
+    type: "feed",
+    target: 5,
+    coinReward: 75,
+    xpReward: 50,
+  },
+  {
+    id: "play-10",
+    name: "Playtime Champion",
+    description: "Play with your pet 10 times",
+    type: "play",
+    target: 10,
+    coinReward: 100,
+    xpReward: 75,
+  },
+  {
+    id: "clean-5",
+    name: "Sparkling Clean",
+    description: "Clean your pet 5 times",
+    type: "clean",
+    target: 5,
+    coinReward: 75,
+    xpReward: 50,
+  },
+  {
+    id: "sleep-3",
+    name: "Rest Time",
+    description: "Let your pet sleep 3 times",
+    type: "sleep",
+    target: 3,
+    coinReward: 60,
+    xpReward: 40,
+  },
+  // Stat-based challenges (reach certain stat levels)
+  {
+    id: "happiness-100",
+    name: "Pure Joy",
+    description: "Reach 100 happiness with your pet",
+    type: "happiness",
+    target: 100,
+    coinReward: 80,
+    xpReward: 60,
+  },
+  {
+    id: "health-100",
+    name: "Peak Health",
+    description: "Reach 100 health with your pet",
+    type: "health",
+    target: 100,
+    coinReward: 80,
+    xpReward: 60,
+  },
+  {
+    id: "energy-100",
+    name: "Energetic",
+    description: "Reach 100 energy with your pet",
+    type: "energy",
+    target: 100,
+    coinReward: 70,
+    xpReward: 50,
+  },
+  // Combination challenges
+  {
+    id: "feed-3",
+    name: "Daily Feeding",
+    description: "Feed your pet 3 times",
+    type: "feed",
+    target: 3,
+    coinReward: 50,
+    xpReward: 30,
+  },
+  {
+    id: "play-5",
+    name: "Fun Time",
+    description: "Play with your pet 5 times",
+    type: "play",
+    target: 5,
+    coinReward: 60,
+    xpReward: 40,
+  },
+];
 
 // Stat decay configuration
 export const STAT_DECAY = {
