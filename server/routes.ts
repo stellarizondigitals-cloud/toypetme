@@ -510,6 +510,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update notification preferences
+  app.patch("/api/user/notifications", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.updateNotificationPreferences(req.session.userId!, req.body);
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update notification preferences" });
+    }
+  });
+
   // Watch ad for bonus (free users only)
   app.post("/api/ads/watch-bonus", requireAuth, async (req, res) => {
     try {

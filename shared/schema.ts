@@ -22,6 +22,11 @@ export const users = pgTable("users", {
   lastDailyReward: timestamp("last_daily_reward"),
   adsWatchedToday: integer("ads_watched_today").notNull().default(0),
   lastAdDate: timestamp("last_ad_date"),
+  notificationsEnabled: boolean("notifications_enabled").notNull().default(true),
+  notifyHunger: boolean("notify_hunger").notNull().default(true),
+  notifyHappiness: boolean("notify_happiness").notNull().default(true),
+  notifyChallenges: boolean("notify_challenges").notNull().default(true),
+  notifyEvolution: boolean("notify_evolution").notNull().default(true),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 

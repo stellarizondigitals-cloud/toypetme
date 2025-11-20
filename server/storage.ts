@@ -43,6 +43,13 @@ export interface IStorage {
   markEmailVerified(userId: string): Promise<User>;
   togglePremium(userId: string): Promise<User>;
   watchAdBonus(userId: string): Promise<{ user: User; coinsEarned: number; adsRemaining: number }>;
+  updateNotificationPreferences(userId: string, preferences: { 
+    notificationsEnabled?: boolean;
+    notifyHunger?: boolean;
+    notifyHappiness?: boolean;
+    notifyChallenges?: boolean;
+    notifyEvolution?: boolean;
+  }): Promise<User>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -173,6 +180,11 @@ export class MemStorage implements IStorage {
       lastDailyReward: null,
       adsWatchedToday: 0,
       lastAdDate: null,
+      notificationsEnabled: true,
+      notifyHunger: true,
+      notifyHappiness: true,
+      notifyChallenges: true,
+      notifyEvolution: true,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -281,6 +293,36 @@ export class MemStorage implements IStorage {
     const adsRemaining = MAX_ADS_PER_DAY - user.adsWatchedToday;
     
     return { user, coinsEarned, adsRemaining };
+  }
+
+  async updateNotificationPreferences(userId: string, preferences: {
+    notificationsEnabled?: boolean;
+    notifyHunger?: boolean;
+    notifyHappiness?: boolean;
+    notifyChallenges?: boolean;
+    notifyEvolution?: boolean;
+  }): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    if (preferences.notificationsEnabled !== undefined) {
+      user.notificationsEnabled = preferences.notificationsEnabled;
+    }
+    if (preferences.notifyHunger !== undefined) {
+      user.notifyHunger = preferences.notifyHunger;
+    }
+    if (preferences.notifyHappiness !== undefined) {
+      user.notifyHappiness = preferences.notifyHappiness;
+    }
+    if (preferences.notifyChallenges !== undefined) {
+      user.notifyChallenges = preferences.notifyChallenges;
+    }
+    if (preferences.notifyEvolution !== undefined) {
+      user.notifyEvolution = preferences.notifyEvolution;
+    }
+    
+    this.users.set(userId, user);
+    return user;
   }
 
   async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
@@ -1121,6 +1163,40 @@ export class DbStorage implements IStorage {
     const adsRemaining = MAX_ADS_PER_DAY - (adsWatchedToday + 1);
     
     return { user: result[0], coinsEarned, adsRemaining };
+  }
+
+  async updateNotificationPreferences(userId: string, preferences: {
+    notificationsEnabled?: boolean;
+    notifyHunger?: boolean;
+    notifyHappiness?: boolean;
+    notifyChallenges?: boolean;
+    notifyEvolution?: boolean;
+  }): Promise<User> {
+    const updateData: Partial<typeof users.$inferSelect> = {};
+    
+    if (preferences.notificationsEnabled !== undefined) {
+      updateData.notificationsEnabled = preferences.notificationsEnabled;
+    }
+    if (preferences.notifyHunger !== undefined) {
+      updateData.notifyHunger = preferences.notifyHunger;
+    }
+    if (preferences.notifyHappiness !== undefined) {
+      updateData.notifyHappiness = preferences.notifyHappiness;
+    }
+    if (preferences.notifyChallenges !== undefined) {
+      updateData.notifyChallenges = preferences.notifyChallenges;
+    }
+    if (preferences.notifyEvolution !== undefined) {
+      updateData.notifyEvolution = preferences.notifyEvolution;
+    }
+    
+    const result = await this.db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return result[0];
   }
 
   // Pet operations
