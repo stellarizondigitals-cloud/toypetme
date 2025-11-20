@@ -40,14 +40,15 @@ export default function Challenges() {
 
   const claimRewardMutation = useMutation({
     mutationFn: async (challengeId: string) => {
-      return await apiRequest(`/api/challenges/${challengeId}/claim`, "POST") as unknown as { user: any; challenge: UserChallenge };
+      const response = await apiRequest("POST", `/api/challenges/${challengeId}/claim`);
+      return await response.json() as { user: any; challenge: UserChallenge };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/challenges/daily"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/me"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       
-      const coinReward = data.challenge?.challenge?.coinReward || 0;
+      const coinReward = data.challenge.challenge.coinReward;
       toast({
         title: "Reward Claimed!",
         description: `You earned ${coinReward} coins!`,

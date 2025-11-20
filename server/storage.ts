@@ -771,6 +771,11 @@ export class MemStorage implements IStorage {
   }
 
   async updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void> {
+    // Validate increment is non-negative
+    if (incrementBy < 0) {
+      throw new Error('Challenge progress increment cannot be negative');
+    }
+
     const userDailyChallenges = this.userChallenges.get(userId) || [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -790,11 +795,11 @@ export class MemStorage implements IStorage {
       const challenge = this.challenges.get(uc.challengeId)!;
       
       if (challengeType === 'happiness' || challengeType === 'health' || challengeType === 'energy') {
-        // For stat-based challenges, set progress to current value
-        uc.progress = incrementBy;
+        // For stat-based challenges, set progress to current value (capped at target)
+        uc.progress = Math.min(incrementBy, challenge.target);
       } else {
-        // For action-based challenges, increment
-        uc.progress += incrementBy;
+        // For action-based challenges, increment (capped at target)
+        uc.progress = Math.min(uc.progress + incrementBy, challenge.target);
       }
 
       // Check if completed
@@ -1623,6 +1628,11 @@ export class DbStorage implements IStorage {
   }
 
   async updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void> {
+    // Validate increment is non-negative
+    if (incrementBy < 0) {
+      throw new Error('Challenge progress increment cannot be negative');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -1651,11 +1661,11 @@ export class DbStorage implements IStorage {
 
       let newProgress = uc.progress;
       if (challengeType === 'happiness' || challengeType === 'health' || challengeType === 'energy') {
-        // For stat-based challenges, set progress to current value
-        newProgress = incrementBy;
+        // For stat-based challenges, set progress to current value (capped at target)
+        newProgress = Math.min(incrementBy, challenge.target);
       } else {
-        // For action-based challenges, increment
-        newProgress += incrementBy;
+        // For action-based challenges, increment (capped at target)
+        newProgress = Math.min(uc.progress + incrementBy, challenge.target);
       }
 
       // Check if completed
@@ -1673,69 +1683,85 @@ export class DbStorage implements IStorage {
   }
 
   async claimChallengeReward(userId: string, userChallengeId: string): Promise<{ user: User; challenge: UserChallenge & { challenge: Challenge } }> {
-    // Get the user challenge
-    const [userChallenge] = await this.db
-      .select()
-      .from(userChallenges)
-      .where(and(
-        eq(userChallenges.id, userChallengeId),
-        eq(userChallenges.userId, userId)
-      ))
-      .limit(1);
+    // Use a transaction to ensure atomicity between claiming and coin award
+    return await this.db.transaction(async (tx) => {
+      // Atomic check and claim: Update only if completed=true AND claimed=false
+      // This prevents double-claiming via race conditions
+      const [updatedChallenge] = await tx
+        .update(userChallenges)
+        .set({ 
+          claimed: true,
+          claimedAt: new Date(),
+        })
+        .where(and(
+          eq(userChallenges.id, userChallengeId),
+          eq(userChallenges.userId, userId),
+          eq(userChallenges.completed, true),
+          eq(userChallenges.claimed, false)
+        ))
+        .returning();
 
-    if (!userChallenge) {
-      throw new Error('Challenge not found');
-    }
+      // If no row was updated, the challenge is either not found, not owned by user,
+      // not completed, or already claimed
+      if (!updatedChallenge) {
+        // Fetch to provide specific error message
+        const [userChallenge] = await tx
+          .select()
+          .from(userChallenges)
+          .where(and(
+            eq(userChallenges.id, userChallengeId),
+            eq(userChallenges.userId, userId)
+          ))
+          .limit(1);
 
-    if (!userChallenge.completed) {
-      throw new Error('Challenge not completed');
-    }
+        if (!userChallenge) {
+          throw new Error('Challenge not found');
+        }
+        if (!userChallenge.completed) {
+          throw new Error('Challenge not completed');
+        }
+        if (userChallenge.claimed) {
+          throw new Error('Reward already claimed');
+        }
+        throw new Error('Failed to claim reward');
+      }
 
-    if (userChallenge.claimed) {
-      throw new Error('Reward already claimed');
-    }
+      // Get challenge details
+      const [challenge] = await tx
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, updatedChallenge.challengeId))
+        .limit(1);
 
-    // Get challenge details
-    const [challenge] = await this.db
-      .select()
-      .from(challenges)
-      .where(eq(challenges.id, userChallenge.challengeId))
-      .limit(1);
+      if (!challenge) {
+        throw new Error('Challenge template not found');
+      }
 
-    // Get user
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+      // Get user and update coins
+      const [user] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-    if (!user) {
-      throw new Error('User not found');
-    }
+      if (!user) {
+        throw new Error('User not found');
+      }
 
-    // Award coins (respecting MAX_COINS cap)
-    const newCoins = Math.min(user.coins + challenge.coinReward, MAX_COINS);
-    
-    // Update user coins and mark challenge as claimed
-    const [updatedUser] = await this.db
-      .update(users)
-      .set({ coins: newCoins })
-      .where(eq(users.id, userId))
-      .returning();
+      // Award coins (respecting MAX_COINS cap)
+      const newCoins = Math.min(user.coins + challenge.coinReward, MAX_COINS);
+      
+      const [updatedUser] = await tx
+        .update(users)
+        .set({ coins: newCoins })
+        .where(eq(users.id, userId))
+        .returning();
 
-    const [updatedChallenge] = await this.db
-      .update(userChallenges)
-      .set({ 
-        claimed: true,
-        claimedAt: new Date(),
-      })
-      .where(eq(userChallenges.id, userChallengeId))
-      .returning();
-
-    return {
-      user: updatedUser,
-      challenge: { ...updatedChallenge, challenge },
-    };
+      return {
+        user: updatedUser,
+        challenge: { ...updatedChallenge, challenge },
+      };
+    });
   }
 
   private async initializeChallenges() {
