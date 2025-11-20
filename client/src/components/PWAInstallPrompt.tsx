@@ -86,7 +86,6 @@ export function PWAInstallPrompt() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
               onClick={handleDismiss}
               data-testid="button-dismiss-install"
             >

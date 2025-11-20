@@ -1,9 +1,25 @@
 export function registerServiceWorker(): void {
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
+      navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
         .then((registration) => {
-          console.log('Service Worker registered:', registration);
+          console.log('Service Worker registered successfully');
+          
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            const existingWorker = navigator.serviceWorker.controller;
+            
+            if (newWorker && existingWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && registration.waiting) {
+                  if (confirm('A new version is available! Reload to update?')) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    window.location.reload();
+                  }
+                }
+              });
+            }
+          });
         })
         .catch((error) => {
           console.error('Service Worker registration failed:', error);
