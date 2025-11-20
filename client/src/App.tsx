@@ -12,6 +12,7 @@ import Inventory from "@/pages/Inventory";
 import MyPets from "@/pages/MyPets";
 import Collection from "@/pages/Collection";
 import Leaderboard from "@/pages/Leaderboard";
+import Challenges from "@/pages/Challenges";
 import GoPremium from "@/pages/GoPremium";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -90,6 +91,9 @@ function Router() {
       </Route>
       <Route path="/leaderboard">
         {() => <ProtectedRoute component={Leaderboard} />}
+      </Route>
+      <Route path="/challenges">
+        {() => <ProtectedRoute component={Challenges} />}
       </Route>
       <Route path="/premium">
         {() => <ProtectedRoute component={GoPremium} />}
