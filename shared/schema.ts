@@ -57,6 +57,12 @@ export const pets = pgTable("pets", {
   lastHealthDecay: timestamp("last_health_decay").notNull().default(sql`now()`),
   lastUpdated: timestamp("last_updated").notNull().default(sql`now()`),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  // Genetic traits for breeding
+  color: text("color").notNull().default("brown"), // Primary color: brown, white, black, gray, golden, pink, blue, purple
+  pattern: text("pattern").notNull().default("solid"), // Pattern: solid, spots, stripes, patches, gradient
+  isMutation: boolean("is_mutation").notNull().default(false), // Special mutation flag
+  parent1Id: varchar("parent1_id"), // Parent 1 reference (nullable for non-bred pets)
+  parent2Id: varchar("parent2_id"), // Parent 2 reference (nullable for non-bred pets)
 }, (table) => ({
   userIdIdx: index("pets_user_id_idx").on(table.userId),
 }));
@@ -105,6 +111,40 @@ export const userChallenges = pgTable("user_challenges", {
 }, (table) => ({
   userIdIdx: index("user_challenges_user_id_idx").on(table.userId),
   assignedDateIdx: index("user_challenges_assigned_date_idx").on(table.assignedDate),
+}));
+
+// Breeding records - tracks active breeding processes
+export const breedingRecords = pgTable("breeding_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  parent1Id: varchar("parent1_id").notNull().references(() => pets.id),
+  parent2Id: varchar("parent2_id").notNull().references(() => pets.id),
+  status: text("status").notNull().default("incubating"), // "incubating", "ready", "hatched"
+  paidWithCoins: boolean("paid_with_coins").notNull().default(true), // true if paid with coins, false if paid with money
+  startedAt: timestamp("started_at").notNull().default(sql`now()`),
+  readyAt: timestamp("ready_at").notNull(), // 24 hours after startedAt (or instant if premium)
+  hatchedAt: timestamp("hatched_at"),
+  eggId: varchar("egg_id"), // Reference to the egg once created
+}, (table) => ({
+  userIdIdx: index("breeding_records_user_id_idx").on(table.userId),
+  statusIdx: index("breeding_records_status_idx").on(table.status),
+}));
+
+// Eggs - unhatched pets waiting to be revealed
+export const eggs = pgTable("eggs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  breedingRecordId: varchar("breeding_record_id").notNull().references(() => breedingRecords.id),
+  name: text("name").notNull(), // Pre-generated name (user can rename after hatching)
+  type: text("type").notNull(), // Inherited from parents
+  color: text("color").notNull(), // Inherited/mutated color
+  pattern: text("pattern").notNull(), // Inherited/mutated pattern
+  isMutation: boolean("is_mutation").notNull().default(false), // Special mutation
+  parent1Id: varchar("parent1_id").notNull(), // Parent 1 reference
+  parent2Id: varchar("parent2_id").notNull(), // Parent 2 reference
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  userIdIdx: index("eggs_user_id_idx").on(table.userId),
 }));
 
 // Schemas for validation
@@ -162,6 +202,25 @@ export const insertUserChallengeSchema = createInsertSchema(userChallenges).omit
   assignedDate: true,
 });
 
+export const insertBreedingRecordSchema = createInsertSchema(breedingRecords).omit({
+  id: true,
+  startedAt: true,
+  hatchedAt: true,
+  eggId: true,
+});
+
+export const insertEggSchema = createInsertSchema(eggs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Breeding request schema
+export const startBreedingSchema = z.object({
+  parent1Id: z.string().min(1, "Parent 1 ID is required"),
+  parent2Id: z.string().min(1, "Parent 2 ID is required"),
+  payWithMoney: z.boolean().default(false), // true for £0.99, false for 200 coins
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -185,6 +244,26 @@ export type Challenge = typeof challenges.$inferSelect;
 
 export type InsertUserChallenge = z.infer<typeof insertUserChallengeSchema>;
 export type UserChallenge = typeof userChallenges.$inferSelect;
+
+export type InsertBreedingRecord = z.infer<typeof insertBreedingRecordSchema>;
+export type BreedingRecord = typeof breedingRecords.$inferSelect;
+
+export type InsertEgg = z.infer<typeof insertEggSchema>;
+export type Egg = typeof eggs.$inferSelect;
+
+export type StartBreedingRequest = z.infer<typeof startBreedingSchema>;
+
+// Breeding constants
+export const BREEDING_COST_COINS = 200;
+export const BREEDING_COST_MONEY = 0.99; // £0.99
+export const BREEDING_DURATION_HOURS = 24;
+export const MUTATION_CHANCE = 0.05; // 5% chance for special mutations
+
+// Available genetic traits
+export const PET_COLORS = ["brown", "white", "black", "gray", "golden", "pink", "blue", "purple"] as const;
+export const PET_PATTERNS = ["solid", "spots", "stripes", "patches", "gradient"] as const;
+export const MUTATION_COLORS = ["rainbow", "starry", "crystal", "shadow"] as const; // Special rare colors
+export const MUTATION_PATTERNS = ["sparkles", "swirls", "cosmic", "flame"] as const; // Special rare patterns
 
 // Daily login bonus and coin cap
 export const DAILY_LOGIN_BONUS = 50;
