@@ -10,10 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
 import { format } from "date-fns";
+import { Bell } from "lucide-react";
 
 export default function Profile() {
   const [, setLocation] = useLocation();
@@ -34,6 +37,22 @@ export default function Profile() {
       setLocation("/login");
     },
   });
+
+  const updateNotificationsMutation = useMutation({
+    mutationFn: (preferences: Partial<User>) => 
+      apiRequest("PATCH", "/api/user/notifications", preferences),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: "Settings updated",
+        description: "Your notification preferences have been saved.",
+      });
+    },
+  });
+
+  const handleNotificationToggle = (key: keyof User, value: boolean) => {
+    updateNotificationsMutation.mutate({ [key]: value });
+  };
 
   if (isLoading) {
     return (
@@ -118,18 +137,129 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="pt-4">
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-                data-testid="button-logout"
-              >
-                {logoutMutation.isPending ? "Logging out..." : "Log Out"}
-              </Button>
+        <Card className="mt-4">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              <CardTitle className="text-xl font-outfit">Notifications</CardTitle>
             </div>
+            <CardDescription>
+              Manage your notification preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notifications-enabled" className="flex-1 cursor-pointer">
+                <div>
+                  <p className="font-medium">Enable Notifications</p>
+                  <p className="text-sm text-muted-foreground">
+                    Master toggle for all notifications
+                  </p>
+                </div>
+              </Label>
+              <Switch
+                id="notifications-enabled"
+                checked={user.notificationsEnabled}
+                onCheckedChange={(checked) => handleNotificationToggle('notificationsEnabled', checked)}
+                disabled={updateNotificationsMutation.isPending}
+                data-testid="switch-notifications-enabled"
+              />
+            </div>
+
+            {user.notificationsEnabled && (
+              <>
+                <div className="h-px bg-border" />
+                
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notify-hunger" className="flex-1 cursor-pointer">
+                    <div>
+                      <p className="font-medium">Hungry Pet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Alert when pet is hungry (hunger &lt; 30%)
+                      </p>
+                    </div>
+                  </Label>
+                  <Switch
+                    id="notify-hunger"
+                    checked={user.notifyHunger}
+                    onCheckedChange={(checked) => handleNotificationToggle('notifyHunger', checked)}
+                    disabled={updateNotificationsMutation.isPending}
+                    data-testid="switch-notify-hunger"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notify-happiness" className="flex-1 cursor-pointer">
+                    <div>
+                      <p className="font-medium">Sad Pet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Alert when pet is sad (happiness &lt; 30%)
+                      </p>
+                    </div>
+                  </Label>
+                  <Switch
+                    id="notify-happiness"
+                    checked={user.notifyHappiness}
+                    onCheckedChange={(checked) => handleNotificationToggle('notifyHappiness', checked)}
+                    disabled={updateNotificationsMutation.isPending}
+                    data-testid="switch-notify-happiness"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notify-challenges" className="flex-1 cursor-pointer">
+                    <div>
+                      <p className="font-medium">Daily Challenges</p>
+                      <p className="text-sm text-muted-foreground">
+                        Notify when new challenges are available
+                      </p>
+                    </div>
+                  </Label>
+                  <Switch
+                    id="notify-challenges"
+                    checked={user.notifyChallenges}
+                    onCheckedChange={(checked) => handleNotificationToggle('notifyChallenges', checked)}
+                    disabled={updateNotificationsMutation.isPending}
+                    data-testid="switch-notify-challenges"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notify-evolution" className="flex-1 cursor-pointer">
+                    <div>
+                      <p className="font-medium">Evolution Ready</p>
+                      <p className="text-sm text-muted-foreground">
+                        Alert when your pet is ready to evolve
+                      </p>
+                    </div>
+                  </Label>
+                  <Switch
+                    id="notify-evolution"
+                    checked={user.notifyEvolution}
+                    onCheckedChange={(checked) => handleNotificationToggle('notifyEvolution', checked)}
+                    disabled={updateNotificationsMutation.isPending}
+                    data-testid="switch-notify-evolution"
+                  />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-4">
+          <CardContent className="pt-6">
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+            >
+              {logoutMutation.isPending ? "Logging out..." : "Log Out"}
+            </Button>
           </CardContent>
         </Card>
       </div>

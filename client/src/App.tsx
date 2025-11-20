@@ -22,6 +22,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import type { User } from "@shared/schema";
+import { useNotifications, useChallengeNotifications } from "@/hooks/useNotifications";
 
 function ProtectedRoute({ component: Component }: { component: () => JSX.Element }): JSX.Element {
   const { data: user, isLoading, isError, refetch } = useQuery<User>({
@@ -58,6 +59,12 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
   }
 
   return <Component />;
+}
+
+function NotificationManager() {
+  useNotifications();
+  useChallengeNotifications();
+  return null;
 }
 
 function Router() {
@@ -110,6 +117,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <NotificationManager />
         <Toaster />
         <Router />
       </TooltipProvider>
