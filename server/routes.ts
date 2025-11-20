@@ -1310,6 +1310,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's game sessions (for cooldown display)
+  app.get("/api/minigames/sessions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const sessions = await storage.getUserMiniGameSessions(userId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Get game sessions error:", error);
+      res.status(500).json({ error: "Failed to fetch game sessions" });
+    }
+  });
+
   // Play a mini-game (with cooldown enforcement and rewards)
   app.post("/api/minigames/:id/play", requireAuth, async (req, res) => {
     try {

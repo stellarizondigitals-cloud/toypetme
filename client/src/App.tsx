@@ -6,6 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GameHome from "@/pages/GameHome";
 import MiniGame from "@/pages/MiniGame";
+import MiniGamesHub from "@/pages/MiniGamesHub";
+import MemoryMatchGame from "@/pages/MemoryMatchGame";
+import ReactionTimeGame from "@/pages/ReactionTimeGame";
+import FeedFrenzyGame from "@/pages/FeedFrenzyGame";
+import BreedingCenter from "@/pages/BreedingCenter";
+import EggManagement from "@/pages/EggManagement";
 import Shop from "@/pages/Shop";
 import Store from "@/pages/Store";
 import Inventory from "@/pages/Inventory";
@@ -81,6 +87,24 @@ function Router() {
       </Route>
       <Route path="/game">
         {() => <ProtectedRoute component={MiniGame} />}
+      </Route>
+      <Route path="/minigames">
+        {() => <ProtectedRoute component={MiniGamesHub} />}
+      </Route>
+      <Route path="/minigames/memory-match">
+        {() => <ProtectedRoute component={MemoryMatchGame} />}
+      </Route>
+      <Route path="/minigames/reaction-time">
+        {() => <ProtectedRoute component={ReactionTimeGame} />}
+      </Route>
+      <Route path="/minigames/feed-frenzy">
+        {() => <ProtectedRoute component={FeedFrenzyGame} />}
+      </Route>
+      <Route path="/breeding">
+        {() => <ProtectedRoute component={BreedingCenter} />}
+      </Route>
+      <Route path="/eggs">
+        {() => <ProtectedRoute component={EggManagement} />}
       </Route>
       <Route path="/shop">
         {() => <ProtectedRoute component={Shop} />}
