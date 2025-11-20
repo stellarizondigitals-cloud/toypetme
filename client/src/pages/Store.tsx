@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
 import { ShoppingBag, Coins, Sparkles, Egg, TrendingUp, CreditCard } from "lucide-react";
@@ -360,7 +361,7 @@ export default function Store() {
             <Button
               variant="outline"
               onClick={() => setShowConfirmModal(false)}
-              disabled={isProcessing}
+              disabled={purchaseMutation.isPending}
               data-testid="button-cancel-purchase"
             >
               Cancel

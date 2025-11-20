@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newCoins = Math.min(user.coins + coinsToAdd, MAX_COINS);
         const actualCoinsAdded = newCoins - user.coins;
         
-        const updatedUser = await storage.updateUserCoins(userId, actualCoinsAdded);
+        const updatedUser = await storage.updateUserCoins(userId, newCoins, user.gems);
         const { passwordHash: _, ...userWithoutPassword } = updatedUser;
         
         return res.json({
