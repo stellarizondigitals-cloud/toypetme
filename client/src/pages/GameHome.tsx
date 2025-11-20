@@ -44,11 +44,13 @@ export default function GameHome() {
     }
   }, [user]);
 
-  // Fetch pet data
+  // Fetch pet data (skip if tutorial should be shown to avoid 404 errors)
+  const shouldFetchPet = user && user.tutorialCompleted;
   const { data: pet, isLoading: petLoading, isError: petError } = useQuery<Pet>({
     queryKey: ["/api/pet"],
     refetchInterval: 30000, // Refresh every 30 seconds to show stat decay
     retry: 3,
+    enabled: shouldFetchPet, // Only fetch pet if tutorial is completed
   });
 
   // Feed mutation
@@ -236,7 +238,8 @@ export default function GameHome() {
     }
   }, [user?.id]);
 
-  if (userLoading || petLoading) {
+  // Show loading state only when waiting for user data or pet data (if tutorial is completed)
+  if (userLoading || (user?.tutorialCompleted && petLoading)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
@@ -267,12 +270,12 @@ export default function GameHome() {
     );
   }
 
-  // Show tutorial for new users
-  if (showTutorial) {
+  // Show tutorial for new users (check tutorialCompleted directly, not state)
+  if (!user.tutorialCompleted) {
     return <TutorialContainer onComplete={() => setShowTutorial(false)} />;
   }
 
-  // After tutorial, we need a pet
+  // After tutorial, we need a pet (only check petError if tutorial is completed)
   if (petError || !pet) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
