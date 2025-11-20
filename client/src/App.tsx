@@ -1,6 +1,7 @@
 import { Switch, Route, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, getQueryFn } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GameHome from "@/pages/GameHome";
@@ -21,8 +22,9 @@ import NotFound from "@/pages/not-found";
 import type { User } from "@shared/schema";
 
 function ProtectedRoute({ component: Component }: { component: () => JSX.Element }): JSX.Element {
-  const { data: user, isLoading } = useQuery<User>({
+  const { data: user, isLoading, isError, refetch } = useQuery<User>({
     queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
   });
 
@@ -34,8 +36,23 @@ function ProtectedRoute({ component: Component }: { component: () => JSX.Element
     );
   }
 
-  if (!user) {
+  // Handle 401 (unauthenticated)
+  if (user === null) {
     return <Redirect to="/login" />;
+  }
+
+  // Handle other errors (network, server issues)
+  if (isError || user === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="text-center">
+          <p className="text-lg text-muted-foreground mb-4">Failed to load authentication status</p>
+          <Button onClick={() => refetch()} data-testid="button-retry-auth">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return <Component />;

@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { getQueryFn } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
 import { Share2, Heart, Sparkles, Trophy, Calendar } from "lucide-react";
@@ -19,17 +21,42 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Collection() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
-  const { data: user, isLoading: userLoading } = useQuery<User>({
-    queryKey: ["/api/user"],
+  const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
+    queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
   });
 
-  const { data: pets, isLoading: petsLoading } = useQuery<Pet[]>({
+  const { data: pets = [], isLoading: petsLoading } = useQuery<Pet[]>({
     queryKey: ["/api/pets"],
   });
+
+  // Auth guard: redirect to login if user is null (401 response)
+  useEffect(() => {
+    if (!userLoading && user === null) {
+      setLocation("/login");
+    }
+  }, [user, userLoading, setLocation]);
+
+  // Handle non-401 errors
+  if (userError) {
+    return (
+      <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
+        <GameHeader coins={0} gems={0} premium={false} notifications={0} />
+        <main className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
+          <div className="text-center py-8">
+            <p className="text-lg text-muted-foreground">Failed to load your collection</p>
+          </div>
+        </main>
+        <BottomTabNav />
+      </div>
+    );
+  }
 
   const handleShareClick = (pet: Pet) => {
     setSelectedPet(pet);
@@ -49,7 +76,7 @@ export default function Collection() {
   const shareToSocial = (platform: string) => {
     if (!selectedPet) return;
 
-    const shareText = `Check out my ToyPetMe! Meet ${selectedPet.name}, a Level ${selectedPet.level} ${getEvolutionStage(selectedPet.evolutionStage)} ${selectedPet.type}! 🎮`;
+    const shareText = `Check out my ToyPetMe! Meet ${selectedPet.name}, a Level ${selectedPet.level} ${getEvolutionStage(selectedPet.evolutionStage)} ${selectedPet.type}!`;
     const shareUrl = window.location.origin;
 
     let url = "";
@@ -86,7 +113,7 @@ export default function Collection() {
   if (userLoading || petsLoading) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
-        <GameHeader coins={user?.coins} gems={user?.gems} premium={user?.premium} notifications={0} />
+        <GameHeader coins={0} gems={0} premium={false} notifications={0} />
         <main className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
@@ -98,11 +125,11 @@ export default function Collection() {
     );
   }
 
-  const sortedPets = pets ? [...pets].sort((a, b) => {
+  const sortedPets = [...pets].sort((a, b) => {
     // Sort by level descending, then by creation date
     if (b.level !== a.level) return b.level - a.level;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  }) : [];
+  });
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
