@@ -1,12 +1,14 @@
 {
-  "name": "ToyPetMe - Pet Toys Marketplace",
+  "name": "ToyPetMe - Virtual Pet Game",
   "short_name": "ToyPetMe",
-  "description": "Premium pet toys for happy pets",
+  "description": "Care for your virtual pet! Feed, play, and watch them evolve in this Tamagotchi-style game.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#a855f7",
+  "background_color": "#FFF5E6",
+  "theme_color": "#FF9A9E",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["games", "entertainment"],
   "icons": [
     {
       "src": "/favicon.png",

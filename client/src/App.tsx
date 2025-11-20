@@ -23,6 +23,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import type { User } from "@shared/schema";
 import { useNotifications, useChallengeNotifications } from "@/hooks/useNotifications";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 function ProtectedRoute({ component: Component }: { component: () => JSX.Element }): JSX.Element {
   const { data: user, isLoading, isError, refetch } = useQuery<User>({
@@ -118,6 +119,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <NotificationManager />
+        <PWAInstallPrompt />
         <Toaster />
         <Router />
       </TooltipProvider>

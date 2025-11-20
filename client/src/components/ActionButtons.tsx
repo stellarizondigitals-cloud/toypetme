@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Utensils, Gamepad2, Sparkles, Moon, Coins } from "lucide-react";
 import { PET_ACTIONS } from "@shared/schema";
 import type { Pet } from "@shared/schema";
+import { triggerHaptic } from "@/lib/haptics";
 
 function SparkleEffect({ show }: { show: boolean }) {
   if (!show) return null;
@@ -120,6 +121,15 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
     };
   }, [pet.lastFed, pet.lastPlayed, pet.lastCleaned]);
 
+  const handleAction = (onClick: () => void, isDisabled?: boolean) => {
+    if (isDisabled) {
+      triggerHaptic('warning');
+      return;
+    }
+    triggerHaptic('medium');
+    onClick();
+  };
+
   const actions = [
     { 
       icon: Utensils, 
@@ -127,7 +137,7 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
       actionKey: "feed" as const,
       onClick: onFeed, 
       cooldown: cooldowns.feed,
-      cost: PET_ACTIONS.feed.coinCost,
+      reward: PET_ACTIONS.feed.coinReward,
       testId: "button-feed",
       hasCooldown: true
     },
@@ -137,7 +147,7 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
       actionKey: "play" as const,
       onClick: onPlay, 
       cooldown: cooldowns.play,
-      cost: PET_ACTIONS.play.coinCost,
+      reward: PET_ACTIONS.play.coinReward,
       testId: "button-play",
       hasCooldown: true
     },
@@ -147,7 +157,7 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
       actionKey: "clean" as const,
       onClick: onClean, 
       cooldown: cooldowns.clean,
-      cost: PET_ACTIONS.clean.coinCost,
+      reward: PET_ACTIONS.clean.coinReward,
       testId: "button-clean",
       hasCooldown: true
     },
@@ -157,7 +167,7 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
       actionKey: "feed" as const,
       onClick: onSleep, 
       cooldown: 0,
-      cost: PET_ACTIONS.sleep.coinCost,
+      reward: PET_ACTIONS.sleep.coinReward,
       testId: "button-sleep",
       hasCooldown: false
     },
@@ -174,8 +184,8 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
             key={action.label}
             variant={action.label === "Sleep" ? "secondary" : "default"}
             size="lg"
-            className="h-16 gap-2 rounded-xl active-elevate-2 flex flex-col items-center justify-center relative overflow-hidden"
-            onClick={action.onClick}
+            className="h-16 gap-2 rounded-xl active-elevate-2 flex flex-col items-center justify-center relative overflow-hidden min-h-[44px]"
+            onClick={() => handleAction(action.onClick, disabled)}
             disabled={disabled}
             data-testid={action.testId}
           >
@@ -188,13 +198,11 @@ export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, i
               <span className="text-xs opacity-80" data-testid={`${action.testId}-cooldown`}>
                 {formatTime(action.cooldown)}
               </span>
-            ) : action.cost > 0 ? (
+            ) : (
               <div className="flex items-center gap-1 text-xs opacity-80">
                 <Coins className="w-3 h-3" />
-                <span data-testid={`${action.testId}-cost`}>{action.cost}</span>
+                <span data-testid={`${action.testId}-reward`}>+{action.reward}</span>
               </div>
-            ) : (
-              <span className="text-xs opacity-80">Free</span>
             )}
           </Button>
         );
