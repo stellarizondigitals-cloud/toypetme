@@ -9,6 +9,7 @@ import Shop from "@/pages/Shop";
 import Store from "@/pages/Store";
 import Inventory from "@/pages/Inventory";
 import MyPets from "@/pages/MyPets";
+import Collection from "@/pages/Collection";
 import GoPremium from "@/pages/GoPremium";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -65,6 +66,9 @@ function Router() {
       </Route>
       <Route path="/my-pets">
         {() => <ProtectedRoute component={MyPets} />}
+      </Route>
+      <Route path="/collection">
+        {() => <ProtectedRoute component={Collection} />}
       </Route>
       <Route path="/premium">
         {() => <ProtectedRoute component={GoPremium} />}
