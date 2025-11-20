@@ -11,19 +11,26 @@ import {
   type InsertChallenge,
   type UserChallenge,
   type InsertUserChallenge,
+  type BreedingRecord,
+  type InsertBreedingRecord,
+  type Egg,
+  type InsertEgg,
   PET_ACTIONS,
   type PetActionType,
   calculateStatDecay,
   DAILY_LOGIN_BONUS,
   MAX_COINS,
   SHOP_ITEMS,
-  DAILY_CHALLENGES
+  DAILY_CHALLENGES,
+  BREEDING_COST_COINS,
+  BREEDING_DURATION_HOURS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and, desc, sql as sqlOp, count, max, gte, lt } from "drizzle-orm";
-import { users, pets, shopItems, inventory, challenges, userChallenges, calculateLevelAndEvolution } from "@shared/schema";
+import { users, pets, shopItems, inventory, challenges, userChallenges, breedingRecords, eggs, calculateLevelAndEvolution } from "@shared/schema";
+import { inheritTraits, generateBabyName, generateRandomTraits } from "./genetics";
 
 export interface IStorage {
   // User operations
@@ -102,6 +109,14 @@ export interface IStorage {
   getDailyChallenges(userId: string): Promise<Array<UserChallenge & { challenge: Challenge }>>;
   updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void>;
   claimChallengeReward(userId: string, userChallengeId: string): Promise<{ user: User; challenge: UserChallenge & { challenge: Challenge } }>;
+
+  // Breeding
+  startBreeding(userId: string, parent1Id: string, parent2Id: string, payWithMoney: boolean): Promise<BreedingRecord>;
+  getBreedingRecords(userId: string): Promise<BreedingRecord[]>;
+  getBreedingRecord(id: string): Promise<BreedingRecord | undefined>;
+  checkAndCompleteBreeding(): Promise<void>; // Check all breeding records and create eggs when ready
+  hatchEgg(userId: string, eggId: string): Promise<{ egg: Egg; pet: Pet }>;
+  getUserEggs(userId: string): Promise<Egg[]>;
 }
 
 export class MemStorage implements IStorage {
