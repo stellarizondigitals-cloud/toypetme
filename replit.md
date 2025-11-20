@@ -8,6 +8,47 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
+**November 20, 2025 - In-App Store with Demo Mode Purchases (Phase 4 - Prompt 11)**
+- Implemented comprehensive in-app Store page with 6 purchasable items
+- **Store Items:**
+  - Pet Eggs: Common (£0.99), Rare (£2.99), Legendary (£4.99)
+  - Coin Packs: 100 coins (£0.99), 500 coins (£3.99)
+  - Evolution Booster (£1.99)
+- **Backend implementation:**
+  - Created API endpoint: POST /api/store/purchase (protected, demo mode)
+  - Coin pack purchases: Add coins to user account (respects MAX_COINS cap of 5000)
+  - Egg/booster purchases: Logged as stubs for future inventory system
+  - Payment integration: Demo mode only (no real charges)
+  - Proper validation and error handling
+- **Frontend implementation:**
+  - Created Store page (/store) with grid layout of items
+  - Purchase confirmation modals with detailed item info
+  - Premium discount: 10% off all purchases for premium users
+  - Payment method notice: Stripe/PayPal placeholders for future integration
+  - React Query mutation for purchase flow with cache invalidation
+  - Toast notifications for success/error states
+  - Lucide CreditCard icon (no emojis per design guidelines)
+  - Loading states with mutation.isPending
+- **Navigation:**
+  - Added Store tab to bottom navigation (replaced emoji with CreditCard icon)
+  - Route registered in App.tsx (/store)
+- **Economic balance:**
+  - 100 coin pack: £0.99 (premium: £0.89)
+  - 500 coin pack: £3.99 (premium: £3.59)
+  - Complements existing earning methods (actions, ads, daily rewards)
+- **Ready for production:**
+  - Stripe/PayPal integration placeholders
+  - Backend endpoint prepared for real payment webhooks
+  - Future enhancements: Zod validation for payloads, inventory system for eggs/boosters
+- **Testing:**
+  - ✅ Coin packs add coins correctly
+  - ✅ Premium discount applied correctly
+  - ✅ Purchase confirmation flow works end-to-end
+  - ✅ Cache invalidation updates UI immediately
+  - ✅ All LSP diagnostics resolved
+- **Architect approved:** Clean separation of concerns, proper security, ready for payment integration
+- **Related files:** `client/src/pages/Store.tsx`, `server/routes.ts`, `client/src/components/BottomTabNav.tsx`, `client/src/App.tsx`
+
 **November 19, 2025 - Ad Integration Placeholder (Phase 4 - Prompt 10)**
 - Implemented ad watching system with simulated 30-second ads for free users
 - Database schema:
@@ -90,11 +131,13 @@ Preferred communication style: Simple, everyday language.
 **Storage Layer:** Interface-based design (`IStorage`) with multi-user support and CRUD operations for user and pet management, including comprehensive stat decay logic and atomic action execution.
 **API Routes:**
 - **Auth:** Signup, login, logout, Google OAuth, verify, resend verification, password reset, `me` endpoint, JWT token issuance and refresh.
-- **User:** User profile.
+- **User:** User profile, toggle premium.
 - **Pet:** Creation, viewing all pets, feed, play, clean, sleep actions.
 - **Shop:** Shop items, purchase.
 - **Inventory:** View, use items.
 - **Rewards:** Daily rewards.
+- **Ads:** Watch ad bonus (free users only).
+- **Store:** Purchase items (demo mode).
 - **Mini-games:** Ball catch sessions.
 **Production Considerations:** Designed for PostgreSQL, `connect-pg-simple` for session store, static file serving, environment-based configuration.
 
