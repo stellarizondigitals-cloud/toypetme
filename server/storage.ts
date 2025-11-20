@@ -462,6 +462,20 @@ export class MemStorage implements IStorage {
     // Add coins reward
     const updatedUser = await this.updateUserCoins(userId, user.coins + action.coinReward, user.gems);
     
+    // Update challenge progress
+    await this.updateChallengeProgress(userId, actionType, 1);
+    
+    // Also update stat-based challenges with current stat values
+    if (updatedPet.happiness >= 0) {
+      await this.updateChallengeProgress(userId, 'happiness', updatedPet.happiness);
+    }
+    if (updatedPet.health >= 0) {
+      await this.updateChallengeProgress(userId, 'health', updatedPet.health);
+    }
+    if (updatedPet.energy >= 0) {
+      await this.updateChallengeProgress(userId, 'energy', updatedPet.energy);
+    }
+    
     // Calculate cooldowns
     const cooldowns: Record<string, number> = {
       feed: 0,
@@ -1212,6 +1226,20 @@ export class DbStorage implements IStorage {
     
     // Add coins reward
     const updatedUser = await this.updateUserCoins(userId, user.coins + action.coinReward, user.gems);
+    
+    // Update challenge progress
+    await this.updateChallengeProgress(userId, actionType, 1);
+    
+    // Also update stat-based challenges with current stat values
+    if (updatedPet.happiness >= 0) {
+      await this.updateChallengeProgress(userId, 'happiness', updatedPet.happiness);
+    }
+    if (updatedPet.health >= 0) {
+      await this.updateChallengeProgress(userId, 'health', updatedPet.health);
+    }
+    if (updatedPet.energy >= 0) {
+      await this.updateChallengeProgress(userId, 'energy', updatedPet.energy);
+    }
     
     // Calculate cooldowns
     const cooldowns: Record<string, number> = {
