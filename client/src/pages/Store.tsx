@@ -262,13 +262,16 @@ export default function Store() {
         <Card className="bg-muted/50">
           <CardContent className="p-4">
             <div className="text-center space-y-2">
-              <p className="text-sm font-semibold">Secure Payment Processing</p>
+              <div className="flex items-center justify-center gap-2">
+                <CreditCard className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm font-semibold">Secure Payment Processing</p>
+              </div>
               <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                <span>💳 Stripe</span>
+                <span>Stripe</span>
                 <span>•</span>
                 <span>PayPal</span>
                 <span>•</span>
-                <span>🔒 SSL Encrypted</span>
+                <span>SSL Encrypted</span>
               </div>
               <p className="text-xs text-muted-foreground italic">
                 Demo Mode: Payment integration placeholders active
