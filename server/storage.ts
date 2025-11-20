@@ -126,6 +126,8 @@ export class MemStorage implements IStorage {
   private inventory: Map<string, Inventory[]>;
   private challenges: Map<string, Challenge>;
   private userChallenges: Map<string, UserChallenge[]>;
+  private breedingRecords: Map<string, BreedingRecord>;
+  private eggs: Map<string, Egg>;
 
   constructor() {
     this.users = new Map();
@@ -134,6 +136,8 @@ export class MemStorage implements IStorage {
     this.inventory = new Map();
     this.challenges = new Map();
     this.userChallenges = new Map();
+    this.breedingRecords = new Map();
+    this.eggs = new Map();
     this.initializeShopItems();
     this.initializeChallenges();
   }
@@ -445,6 +449,12 @@ export class MemStorage implements IStorage {
   async createPet(insertPet: InsertPet): Promise<Pet> {
     const id = randomUUID();
     const now = new Date();
+    
+    // Generate random genetic traits if not provided
+    const randomTraits = insertPet.color && insertPet.pattern 
+      ? { color: insertPet.color, pattern: insertPet.pattern }
+      : generateRandomTraits();
+    
     const pet: Pet = {
       id,
       userId: insertPet.userId,
@@ -470,6 +480,12 @@ export class MemStorage implements IStorage {
       lastHealthDecay: insertPet.lastHealthDecay ?? now,
       lastUpdated: now,
       createdAt: now,
+      // Genetic traits (for breeding)
+      color: insertPet.color ?? randomTraits.color,
+      pattern: insertPet.pattern ?? randomTraits.pattern,
+      isMutation: insertPet.isMutation ?? false,
+      parent1Id: insertPet.parent1Id ?? null,
+      parent2Id: insertPet.parent2Id ?? null,
     };
     this.pets.set(id, pet);
     return pet;
@@ -944,6 +960,153 @@ export class MemStorage implements IStorage {
       user,
       challenge: { ...userChallenge, challenge },
     };
+  }
+
+  // Breeding methods
+  async startBreeding(userId: string, parent1Id: string, parent2Id: string, payWithMoney: boolean): Promise<BreedingRecord> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+
+    const parent1 = this.pets.get(parent1Id);
+    const parent2 = this.pets.get(parent2Id);
+
+    if (!parent1 || !parent2) {
+      throw new Error("Parent pets not found");
+    }
+
+    if (parent1.userId !== userId || parent2.userId !== userId) {
+      throw new Error("You can only breed your own pets");
+    }
+
+    if (parent1Id === parent2Id) {
+      throw new Error("Cannot breed a pet with itself");
+    }
+
+    // Check payment
+    if (!payWithMoney && user.coins < BREEDING_COST_COINS) {
+      throw new Error(`Not enough coins. Breeding costs ${BREEDING_COST_COINS} coins`);
+    }
+
+    // Deduct coins if paying with coins
+    if (!payWithMoney) {
+      user.coins -= BREEDING_COST_COINS;
+      this.users.set(userId, user);
+    }
+
+    // Create breeding record
+    const id = randomUUID();
+    const now = new Date();
+    const readyAt = new Date(now.getTime() + BREEDING_DURATION_HOURS * 60 * 60 * 1000);
+
+    const breedingRecord: BreedingRecord = {
+      id,
+      userId,
+      parent1Id,
+      parent2Id,
+      status: "incubating",
+      paidWithCoins: !payWithMoney,
+      startedAt: now,
+      readyAt,
+      hatchedAt: null,
+      eggId: null,
+    };
+
+    this.breedingRecords.set(id, breedingRecord);
+    return breedingRecord;
+  }
+
+  async getBreedingRecords(userId: string): Promise<BreedingRecord[]> {
+    return Array.from(this.breedingRecords.values()).filter(
+      record => record.userId === userId
+    );
+  }
+
+  async getBreedingRecord(id: string): Promise<BreedingRecord | undefined> {
+    return this.breedingRecords.get(id);
+  }
+
+  async checkAndCompleteBreeding(): Promise<void> {
+    const now = new Date();
+    
+    for (const [id, record] of Array.from(this.breedingRecords.entries())) {
+      if (record.status === "incubating" && record.readyAt <= now) {
+        // Breeding is ready! Create egg
+        const parent1 = this.pets.get(record.parent1Id);
+        const parent2 = this.pets.get(record.parent2Id);
+
+        if (!parent1 || !parent2) continue;
+
+        // Generate genetic traits
+        const traits = inheritTraits(parent1, parent2);
+        const babyName = generateBabyName();
+
+        // Create egg
+        const eggId = randomUUID();
+        const egg: Egg = {
+          id: eggId,
+          userId: record.userId,
+          breedingRecordId: id,
+          name: babyName,
+          type: traits.type,
+          color: traits.color,
+          pattern: traits.pattern,
+          isMutation: traits.isMutation,
+          parent1Id: record.parent1Id,
+          parent2Id: record.parent2Id,
+          createdAt: now,
+        };
+
+        this.eggs.set(eggId, egg);
+
+        // Update breeding record
+        record.status = "ready";
+        record.eggId = eggId;
+        this.breedingRecords.set(id, record);
+      }
+    }
+  }
+
+  async hatchEgg(userId: string, eggId: string): Promise<{ egg: Egg; pet: Pet }> {
+    const egg = this.eggs.get(eggId);
+    
+    if (!egg) {
+      throw new Error("Egg not found");
+    }
+
+    if (egg.userId !== userId) {
+      throw new Error("This is not your egg");
+    }
+
+    // Create the pet from the egg
+    const newPet = await this.createPet({
+      userId,
+      name: egg.name,
+      type: egg.type,
+      color: egg.color,
+      pattern: egg.pattern,
+      isMutation: egg.isMutation,
+      parent1Id: egg.parent1Id,
+      parent2Id: egg.parent2Id,
+    });
+
+    // Update breeding record
+    const breedingRecord = Array.from(this.breedingRecords.values()).find(
+      r => r.eggId === eggId
+    );
+    if (breedingRecord) {
+      breedingRecord.status = "hatched";
+      breedingRecord.hatchedAt = new Date();
+      this.breedingRecords.set(breedingRecord.id, breedingRecord);
+    }
+
+    // Remove egg
+    this.eggs.delete(eggId);
+
+    return { egg, pet: newPet };
+  }
+
+  async getUserEggs(userId: string): Promise<Egg[]> {
+    return Array.from(this.eggs.values()).filter(egg => egg.userId === userId);
   }
 }
 
@@ -1964,6 +2127,176 @@ export class DbStorage implements IStorage {
     if (existing.length === 0) {
       await this.db.insert(challenges).values(DAILY_CHALLENGES);
     }
+  }
+
+  // Breeding methods
+  async startBreeding(userId: string, parent1Id: string, parent2Id: string, payWithMoney: boolean): Promise<BreedingRecord> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+
+    const parent1 = await this.getPet(parent1Id);
+    const parent2 = await this.getPet(parent2Id);
+
+    if (!parent1 || !parent2) {
+      throw new Error("Parent pets not found");
+    }
+
+    if (parent1.userId !== userId || parent2.userId !== userId) {
+      throw new Error("You can only breed your own pets");
+    }
+
+    if (parent1Id === parent2Id) {
+      throw new Error("Cannot breed a pet with itself");
+    }
+
+    // Check payment
+    if (!payWithMoney && user.coins < BREEDING_COST_COINS) {
+      throw new Error(`Not enough coins. Breeding costs ${BREEDING_COST_COINS} coins`);
+    }
+
+    // Deduct coins if paying with coins
+    if (!payWithMoney) {
+      await this.db
+        .update(users)
+        .set({ coins: user.coins - BREEDING_COST_COINS })
+        .where(eq(users.id, userId));
+    }
+
+    // Create breeding record
+    const now = new Date();
+    const readyAt = new Date(now.getTime() + BREEDING_DURATION_HOURS * 60 * 60 * 1000);
+
+    const [breedingRecord] = await this.db
+      .insert(breedingRecords)
+      .values({
+        userId,
+        parent1Id,
+        parent2Id,
+        status: "incubating",
+        paidWithCoins: !payWithMoney,
+        readyAt,
+      })
+      .returning();
+
+    return breedingRecord;
+  }
+
+  async getBreedingRecords(userId: string): Promise<BreedingRecord[]> {
+    return await this.db
+      .select()
+      .from(breedingRecords)
+      .where(eq(breedingRecords.userId, userId));
+  }
+
+  async getBreedingRecord(id: string): Promise<BreedingRecord | undefined> {
+    const result = await this.db
+      .select()
+      .from(breedingRecords)
+      .where(eq(breedingRecords.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async checkAndCompleteBreeding(): Promise<void> {
+    const now = new Date();
+    
+    // Find all incubating records that are ready
+    const readyRecords = await this.db
+      .select()
+      .from(breedingRecords)
+      .where(
+        and(
+          eq(breedingRecords.status, "incubating"),
+          lt(breedingRecords.readyAt, now)
+        )
+      );
+
+    for (const record of readyRecords) {
+      // Get parent pets
+      const parent1 = await this.getPet(record.parent1Id);
+      const parent2 = await this.getPet(record.parent2Id);
+
+      if (!parent1 || !parent2) continue;
+
+      // Generate genetic traits
+      const traits = inheritTraits(parent1, parent2);
+      const babyName = generateBabyName();
+
+      // Create egg
+      const [egg] = await this.db
+        .insert(eggs)
+        .values({
+          userId: record.userId,
+          breedingRecordId: record.id,
+          name: babyName,
+          type: traits.type,
+          color: traits.color,
+          pattern: traits.pattern,
+          isMutation: traits.isMutation,
+          parent1Id: record.parent1Id,
+          parent2Id: record.parent2Id,
+        })
+        .returning();
+
+      // Update breeding record
+      await this.db
+        .update(breedingRecords)
+        .set({ 
+          status: "ready",
+          eggId: egg.id,
+        })
+        .where(eq(breedingRecords.id, record.id));
+    }
+  }
+
+  async hatchEgg(userId: string, eggId: string): Promise<{ egg: Egg; pet: Pet }> {
+    const [egg] = await this.db
+      .select()
+      .from(eggs)
+      .where(eq(eggs.id, eggId))
+      .limit(1);
+    
+    if (!egg) {
+      throw new Error("Egg not found");
+    }
+
+    if (egg.userId !== userId) {
+      throw new Error("This is not your egg");
+    }
+
+    // Create the pet from the egg
+    const newPet = await this.createPet({
+      userId,
+      name: egg.name,
+      type: egg.type,
+      color: egg.color,
+      pattern: egg.pattern,
+      isMutation: egg.isMutation,
+      parent1Id: egg.parent1Id,
+      parent2Id: egg.parent2Id,
+    });
+
+    // Update breeding record
+    const now = new Date();
+    await this.db
+      .update(breedingRecords)
+      .set({ 
+        status: "hatched",
+        hatchedAt: now,
+      })
+      .where(eq(breedingRecords.eggId, eggId));
+
+    // Delete egg
+    await this.db.delete(eggs).where(eq(eggs.id, eggId));
+
+    return { egg, pet: newPet };
+  }
+
+  async getUserEggs(userId: string): Promise<Egg[]> {
+    return await this.db
+      .select()
+      .from(eggs)
+      .where(eq(eggs.userId, userId));
   }
 }
 
