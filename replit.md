@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 - **Store:** Purchase items (demo mode).
 - **Mini-games:** Ball catch.
 - **Leaderboard:** Global rankings (highest level, most pets, total coins).
+- **Challenges:** Daily challenges (GET /api/challenges/daily, POST /api/challenges/:id/claim), automatic progress tracking.
 
 ### Notable Architecture Decisions
 - **Monorepo Structure:** `shared/` directory for client-server type safety.
@@ -47,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **In-App Store:** 6 purchasable items (eggs, coin packs, booster), premium discount, demo mode payments, prepared for Stripe/PayPal.
 - **Ad Integration:** Simulated 30-second ads for free users (5 per day limit), 50 coins per ad reward, premium users have no ads.
 - **Premium Monetization:** Manual toggle for premium status, GoPremium page listing benefits, premium badge display.
+- **Daily Challenge System:** 3 random challenges per day (9 predefined types: action-based and stat-based), automatic progress tracking on pet actions, completion detection with progress bars, reward claiming (50-100 coins, 20-50 XP per challenge), database transactions for atomic claim operations, security hardening to prevent double-claiming and progress overflow.
 
 ## External Dependencies
 
