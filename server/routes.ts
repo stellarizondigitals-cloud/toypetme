@@ -1109,6 +1109,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== DAILY CHALLENGES ROUTES =====
+  
+  // Get daily challenges for user
+  app.get("/api/challenges/daily", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const challenges = await storage.getDailyChallenges(userId);
+      res.json(challenges);
+    } catch (error) {
+      console.error("Get daily challenges error:", error);
+      res.status(500).json({ error: "Failed to fetch daily challenges" });
+    }
+  });
+
+  // Claim challenge reward
+  app.post("/api/challenges/:id/claim", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+
+      const result = await storage.claimChallengeReward(userId, id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Claim challenge reward error:", error);
+      
+      if (error.message === 'Challenge not found') {
+        return res.status(404).json({ error: error.message });
+      } else if (error.message === 'Challenge not completed') {
+        return res.status(400).json({ error: error.message });
+      } else if (error.message === 'Reward already claimed') {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      res.status(500).json({ error: "Failed to claim challenge reward" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
