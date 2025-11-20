@@ -532,6 +532,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Store purchase (demo mode - no real payment processing)
+  app.post("/api/store/purchase", requireAuth, async (req, res) => {
+    try {
+      const { itemId, price } = req.body;
+      
+      if (!itemId || !price) {
+        return res.status(400).json({ error: "Missing itemId or price" });
+      }
+
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Demo mode: Simulate purchase without real payment
+      // In production, this would integrate with Stripe/PayPal
+      
+      // Handle different item types
+      let coinsToAdd = 0;
+      
+      if (itemId === "coin-pack-100") {
+        coinsToAdd = 100;
+      } else if (itemId === "coin-pack-500") {
+        coinsToAdd = 500;
+      } else if (itemId.includes("egg") || itemId.includes("booster")) {
+        // For eggs and boosters, add them to inventory (future feature)
+        // For now, just log the purchase
+        console.log(`Demo purchase: ${itemId} for user ${userId}`);
+      }
+
+      // Add coins if it's a coin pack
+      if (coinsToAdd > 0) {
+        const MAX_COINS = 5000;
+        const newCoins = Math.min(user.coins + coinsToAdd, MAX_COINS);
+        const actualCoinsAdded = newCoins - user.coins;
+        
+        const updatedUser = await storage.updateUserCoins(userId, actualCoinsAdded);
+        const { passwordHash: _, ...userWithoutPassword } = updatedUser;
+        
+        return res.json({
+          success: true,
+          user: userWithoutPassword,
+          itemId,
+          coinsAdded: actualCoinsAdded,
+          message: `Demo purchase successful! Added ${actualCoinsAdded} coins.`,
+        });
+      }
+
+      // For non-coin items, just return success
+      const { passwordHash: _, ...userWithoutPassword } = user;
+      res.json({
+        success: true,
+        user: userWithoutPassword,
+        itemId,
+        message: `Demo purchase successful! ${itemId} added to your account.`,
+      });
+    } catch (error) {
+      console.error("Store purchase error:", error);
+      res.status(500).json({ error: "Failed to process purchase" });
+    }
+  });
+
   // Get pet with decay applied
   app.get("/api/pet", requireAuth, async (req, res) => {
     try {

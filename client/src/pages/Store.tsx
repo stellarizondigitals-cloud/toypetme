@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,10 +100,38 @@ export default function Store() {
   const { toast } = useToast();
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ["/api/user"],
+  });
+
+  const purchaseMutation = useMutation({
+    mutationFn: async (item: StoreItem) => {
+      // Calculate final price (with premium discount if applicable)
+      const finalPrice = user?.premium ? item.price * 0.9 : item.price;
+      
+      const response = await apiRequest("POST", "/api/store/purchase", {
+        itemId: item.id,
+        price: finalPrice,
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setShowConfirmModal(false);
+      toast({
+        title: "Purchase Successful!",
+        description: data.message || "Your purchase has been completed in demo mode.",
+      });
+      setSelectedItem(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purchase Failed",
+        description: error?.message || "Failed to complete purchase. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const handlePurchaseClick = (item: StoreItem) => {
@@ -113,19 +141,7 @@ export default function Store() {
 
   const handleConfirmPurchase = async () => {
     if (!selectedItem) return;
-
-    setIsProcessing(true);
-
-    // Simulate payment processing (placeholder)
-    setTimeout(() => {
-      setIsProcessing(false);
-      setShowConfirmModal(false);
-      toast({
-        title: "Payment Processing",
-        description: `Payment integration is in demo mode. In production, this would process your £${selectedItem.price.toFixed(2)} payment via Stripe/PayPal.`,
-      });
-      setSelectedItem(null);
-    }, 2000);
+    purchaseMutation.mutate(selectedItem);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -351,11 +367,11 @@ export default function Store() {
             </Button>
             <Button
               onClick={handleConfirmPurchase}
-              disabled={isProcessing}
+              disabled={purchaseMutation.isPending}
               className="gap-2"
               data-testid="button-confirm-purchase"
             >
-              {isProcessing ? (
+              {purchaseMutation.isPending ? (
                 <>
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                   Processing...
