@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import GameHome from "@/pages/GameHome";
 import MiniGame from "@/pages/MiniGame";
 import Shop from "@/pages/Shop";
+import Store from "@/pages/Store";
 import Inventory from "@/pages/Inventory";
 import MyPets from "@/pages/MyPets";
 import GoPremium from "@/pages/GoPremium";
@@ -55,6 +56,9 @@ function Router() {
       </Route>
       <Route path="/shop">
         {() => <ProtectedRoute component={Shop} />}
+      </Route>
+      <Route path="/store">
+        {() => <ProtectedRoute component={Store} />}
       </Route>
       <Route path="/inventory">
         {() => <ProtectedRoute component={Inventory} />}

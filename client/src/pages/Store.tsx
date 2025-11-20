@@ -172,7 +172,12 @@ export default function Store() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <GameHeader user={user} title="Store" />
+      <GameHeader 
+        coins={user?.coins} 
+        gems={user?.gems} 
+        premium={user?.premium}
+        notifications={0}
+      />
 
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* Header */}
@@ -363,7 +368,7 @@ export default function Store() {
         </DialogContent>
       </Dialog>
 
-      <BottomTabNav activeTab="store" />
+      <BottomTabNav />
     </div>
   );
 }

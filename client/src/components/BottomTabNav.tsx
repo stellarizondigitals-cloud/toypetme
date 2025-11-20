@@ -9,6 +9,7 @@ export default function BottomTabNav() {
     { id: "home", icon: Home, label: "Home", path: "/" },
     { id: "pets", icon: PawPrint, label: "Pets", path: "/my-pets" },
     { id: "shop", icon: ShoppingBag, label: "Shop", path: "/shop" },
+    { id: "store", icon: ShoppingBag, label: "Store", path: "/store" },
     { id: "inventory", icon: Package, label: "Items", path: "/inventory" },
     { id: "premium", icon: Crown, label: "Premium", path: "/premium" },
   ];
