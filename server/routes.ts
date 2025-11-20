@@ -1071,6 +1071,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== LEADERBOARD ROUTES =====
+  
+  // Get leaderboard by highest level pet
+  app.get("/api/leaderboard/highest-level", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const result = await storage.getLeaderboardByHighestLevelPet(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Leaderboard (highest level) error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Get leaderboard by most pets owned
+  app.get("/api/leaderboard/most-pets", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const result = await storage.getLeaderboardByMostPets(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Leaderboard (most pets) error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Get leaderboard by total coins
+  app.get("/api/leaderboard/total-coins", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const result = await storage.getLeaderboardByTotalCoins(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Leaderboard (total coins) error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

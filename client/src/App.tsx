@@ -11,6 +11,7 @@ import Store from "@/pages/Store";
 import Inventory from "@/pages/Inventory";
 import MyPets from "@/pages/MyPets";
 import Collection from "@/pages/Collection";
+import Leaderboard from "@/pages/Leaderboard";
 import GoPremium from "@/pages/GoPremium";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -86,6 +87,9 @@ function Router() {
       </Route>
       <Route path="/collection">
         {() => <ProtectedRoute component={Collection} />}
+      </Route>
+      <Route path="/leaderboard">
+        {() => <ProtectedRoute component={Leaderboard} />}
       </Route>
       <Route path="/premium">
         {() => <ProtectedRoute component={GoPremium} />}

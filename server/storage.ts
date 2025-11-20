@@ -1238,37 +1238,53 @@ export class DbStorage implements IStorage {
     const leaderboard = [];
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
+      const maxLevel = Number(result.maxLevel ?? 0);
+      
       // Find the pet with the max level for this user
       const topPet = await this.db
         .select()
         .from(pets)
         .where(and(
           eq(pets.userId, result.userId),
-          eq(pets.level, result.maxLevel ?? 0)
+          eq(pets.level, maxLevel)
         ))
         .limit(1);
       
       leaderboard.push({
         userId: result.userId,
         username: result.username,
-        maxLevel: result.maxLevel ?? 0,
+        maxLevel,
         petName: topPet[0]?.name || 'Unknown',
         rank: i + 1,
       });
     }
 
-    // Find current user's rank
-    const allUsers = await this.db
+    // Find current user's rank efficiently using COUNT
+    // First get the user's max level
+    const currentUserPets = await this.db
       .select({
-        userId: pets.userId,
         maxLevel: max(pets.level).as('max_level'),
       })
       .from(pets)
-      .groupBy(pets.userId)
-      .orderBy(desc(sqlOp`max(${pets.level})`));
+      .where(eq(pets.userId, currentUserId))
+      .groupBy(pets.userId);
 
-    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
-    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+    let currentUserRank: number | null = null;
+    if (currentUserPets.length > 0) {
+      const currentMaxLevel = Number(currentUserPets[0].maxLevel ?? 0);
+      
+      // Count how many users have a higher max level
+      const higherRankedUsers = await this.db
+        .select({
+          userId: pets.userId,
+          maxLevel: max(pets.level).as('max_level'),
+        })
+        .from(pets)
+        .groupBy(pets.userId)
+        .having(sqlOp`max(${pets.level}) > ${currentMaxLevel}`);
+      
+      currentUserRank = higherRankedUsers.length + 1;
+    }
 
     return { leaderboard, currentUserRank };
   }
@@ -1293,22 +1309,35 @@ export class DbStorage implements IStorage {
     const leaderboard = results.map((result, index) => ({
       userId: result.userId,
       username: result.username,
-      petCount: result.petCount,
+      petCount: Number(result.petCount ?? 0),
       rank: index + 1,
     }));
 
-    // Find current user's rank
-    const allUsers = await this.db
+    // Find current user's rank efficiently using COUNT
+    // First get the user's pet count
+    const currentUserPetCount = await this.db
       .select({
-        userId: pets.userId,
         petCount: count(pets.id).as('pet_count'),
       })
       .from(pets)
-      .groupBy(pets.userId)
-      .orderBy(desc(count(pets.id)));
+      .where(eq(pets.userId, currentUserId));
 
-    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
-    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+    let currentUserRank: number | null = null;
+    if (currentUserPetCount.length > 0) {
+      const currentCount = Number(currentUserPetCount[0].petCount ?? 0);
+      
+      // Count how many users have more pets
+      const higherRankedUsers = await this.db
+        .select({
+          userId: pets.userId,
+          petCount: count(pets.id).as('pet_count'),
+        })
+        .from(pets)
+        .groupBy(pets.userId)
+        .having(sqlOp`count(${pets.id}) > ${currentCount}`);
+      
+      currentUserRank = higherRankedUsers.length + 1;
+    }
 
     return { leaderboard, currentUserRank };
   }
@@ -1331,21 +1360,35 @@ export class DbStorage implements IStorage {
     const leaderboard = results.map((result, index) => ({
       userId: result.userId,
       username: result.username,
-      coins: result.coins,
+      coins: Number(result.coins ?? 0),
       rank: index + 1,
     }));
 
-    // Find current user's rank
-    const allUsers = await this.db
+    // Find current user's rank efficiently using COUNT
+    // First get the current user's coins
+    const currentUserData = await this.db
       .select({
-        userId: users.id,
         coins: users.coins,
       })
       .from(users)
-      .orderBy(desc(users.coins));
+      .where(eq(users.id, currentUserId))
+      .limit(1);
 
-    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
-    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+    let currentUserRank: number | null = null;
+    if (currentUserData.length > 0) {
+      const currentCoins = Number(currentUserData[0].coins ?? 0);
+      
+      // Count how many users have more coins
+      const higherRankedCount = await this.db
+        .select({
+          count: count(users.id).as('count'),
+        })
+        .from(users)
+        .where(sqlOp`${users.coins} > ${currentCoins}`);
+      
+      const higherRanked = Number(higherRankedCount[0]?.count ?? 0);
+      currentUserRank = higherRanked + 1;
+    }
 
     return { leaderboard, currentUserRank };
   }

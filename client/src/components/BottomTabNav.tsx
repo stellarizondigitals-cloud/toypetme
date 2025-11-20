@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, Package, PawPrint, Crown, Trophy } from "lucide-react";
+import { Home, ShoppingBag, Package, PawPrint, Crown, Trophy, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
@@ -8,8 +8,8 @@ export default function BottomTabNav() {
   const tabs = [
     { id: "home", icon: Home, label: "Home", path: "/" },
     { id: "collection", icon: Trophy, label: "Collection", path: "/collection" },
+    { id: "leaderboard", icon: Award, label: "Ranks", path: "/leaderboard" },
     { id: "shop", icon: ShoppingBag, label: "Shop", path: "/shop" },
-    { id: "inventory", icon: Package, label: "Items", path: "/inventory" },
     { id: "premium", icon: Crown, label: "Premium", path: "/premium" },
   ];
 
