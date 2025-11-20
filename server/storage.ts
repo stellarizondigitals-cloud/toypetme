@@ -17,7 +17,7 @@ import {
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, sql as sqlOp, count, max } from "drizzle-orm";
 import { users, pets, shopItems, inventory, calculateLevelAndEvolution } from "@shared/schema";
 
 export interface IStorage {
@@ -69,6 +69,20 @@ export interface IStorage {
   addToInventory(userId: string, itemId: string, quantity: number): Promise<Inventory>;
   purchaseItem(userId: string, itemId: string): Promise<{ user: User; inventory: Inventory }>;
   useInventoryItem(userId: string, itemId: string): Promise<Inventory | undefined>;
+
+  // Leaderboard
+  getLeaderboardByHighestLevelPet(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; maxLevel: number; petName: string; rank: number }>;
+    currentUserRank: number | null;
+  }>;
+  getLeaderboardByMostPets(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; petCount: number; rank: number }>;
+    currentUserRank: number | null;
+  }>;
+  getLeaderboardByTotalCoins(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; coins: number; rank: number }>;
+    currentUserRank: number | null;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -555,6 +569,118 @@ export class MemStorage implements IStorage {
     }
     
     return item;
+  }
+
+  // Leaderboard methods
+  async getLeaderboardByHighestLevelPet(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; maxLevel: number; petName: string; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    const allPets = Array.from(this.pets.values());
+    const userPetMap = new Map<string, { maxLevel: number; petName: string }>();
+
+    // Find highest level pet for each user
+    for (const pet of allPets) {
+      const current = userPetMap.get(pet.userId);
+      if (!current || pet.level > current.maxLevel) {
+        userPetMap.set(pet.userId, { maxLevel: pet.level, petName: pet.name });
+      }
+    }
+
+    // Create leaderboard entries
+    const entries = Array.from(userPetMap.entries()).map(([userId, data]) => {
+      const user = this.users.get(userId);
+      return {
+        userId,
+        username: user?.username || 'Unknown',
+        maxLevel: data.maxLevel,
+        petName: data.petName,
+      };
+    });
+
+    // Sort by level descending
+    entries.sort((a, b) => b.maxLevel - a.maxLevel);
+
+    // Add ranks
+    const leaderboard = entries.slice(0, 50).map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+
+    // Find current user's rank
+    const currentUserIndex = entries.findIndex(e => e.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
+  }
+
+  async getLeaderboardByMostPets(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; petCount: number; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    const allPets = Array.from(this.pets.values());
+    const userPetCount = new Map<string, number>();
+
+    // Count pets for each user
+    for (const pet of allPets) {
+      const count = userPetCount.get(pet.userId) || 0;
+      userPetCount.set(pet.userId, count + 1);
+    }
+
+    // Create leaderboard entries
+    const entries = Array.from(userPetCount.entries()).map(([userId, petCount]) => {
+      const user = this.users.get(userId);
+      return {
+        userId,
+        username: user?.username || 'Unknown',
+        petCount,
+      };
+    });
+
+    // Sort by pet count descending
+    entries.sort((a, b) => b.petCount - a.petCount);
+
+    // Add ranks
+    const leaderboard = entries.slice(0, 50).map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+
+    // Find current user's rank
+    const currentUserIndex = entries.findIndex(e => e.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
+  }
+
+  async getLeaderboardByTotalCoins(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; coins: number; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    // Get all users
+    const allUsers = Array.from(this.users.values());
+
+    // Create leaderboard entries
+    const entries = allUsers.map(user => ({
+      userId: user.id,
+      username: user.username,
+      coins: user.coins,
+    }));
+
+    // Sort by coins descending
+    entries.sort((a, b) => b.coins - a.coins);
+
+    // Add ranks
+    const leaderboard = entries.slice(0, 50).map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+
+    // Find current user's rank
+    const currentUserIndex = entries.findIndex(e => e.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
   }
 }
 
@@ -1088,6 +1214,140 @@ export class DbStorage implements IStorage {
         .returning();
       return result[0];
     }
+  }
+
+  // Leaderboard methods
+  async getLeaderboardByHighestLevelPet(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; maxLevel: number; petName: string; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    // Get top 50 users by their highest level pet
+    const results = await this.db
+      .select({
+        userId: pets.userId,
+        username: users.username,
+        maxLevel: max(pets.level).as('max_level'),
+      })
+      .from(pets)
+      .innerJoin(users, eq(pets.userId, users.id))
+      .groupBy(pets.userId, users.username)
+      .orderBy(desc(sqlOp`max(${pets.level})`))
+      .limit(50);
+
+    // Get pet names for the top levels
+    const leaderboard = [];
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      // Find the pet with the max level for this user
+      const topPet = await this.db
+        .select()
+        .from(pets)
+        .where(and(
+          eq(pets.userId, result.userId),
+          eq(pets.level, result.maxLevel ?? 0)
+        ))
+        .limit(1);
+      
+      leaderboard.push({
+        userId: result.userId,
+        username: result.username,
+        maxLevel: result.maxLevel ?? 0,
+        petName: topPet[0]?.name || 'Unknown',
+        rank: i + 1,
+      });
+    }
+
+    // Find current user's rank
+    const allUsers = await this.db
+      .select({
+        userId: pets.userId,
+        maxLevel: max(pets.level).as('max_level'),
+      })
+      .from(pets)
+      .groupBy(pets.userId)
+      .orderBy(desc(sqlOp`max(${pets.level})`));
+
+    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
+  }
+
+  async getLeaderboardByMostPets(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; petCount: number; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    // Get top 50 users by pet count
+    const results = await this.db
+      .select({
+        userId: pets.userId,
+        username: users.username,
+        petCount: count(pets.id).as('pet_count'),
+      })
+      .from(pets)
+      .innerJoin(users, eq(pets.userId, users.id))
+      .groupBy(pets.userId, users.username)
+      .orderBy(desc(count(pets.id)))
+      .limit(50);
+
+    const leaderboard = results.map((result, index) => ({
+      userId: result.userId,
+      username: result.username,
+      petCount: result.petCount,
+      rank: index + 1,
+    }));
+
+    // Find current user's rank
+    const allUsers = await this.db
+      .select({
+        userId: pets.userId,
+        petCount: count(pets.id).as('pet_count'),
+      })
+      .from(pets)
+      .groupBy(pets.userId)
+      .orderBy(desc(count(pets.id)));
+
+    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
+  }
+
+  async getLeaderboardByTotalCoins(currentUserId: string): Promise<{ 
+    leaderboard: Array<{ userId: string; username: string; coins: number; rank: number }>;
+    currentUserRank: number | null;
+  }> {
+    // Get top 50 users by total coins
+    const results = await this.db
+      .select({
+        userId: users.id,
+        username: users.username,
+        coins: users.coins,
+      })
+      .from(users)
+      .orderBy(desc(users.coins))
+      .limit(50);
+
+    const leaderboard = results.map((result, index) => ({
+      userId: result.userId,
+      username: result.username,
+      coins: result.coins,
+      rank: index + 1,
+    }));
+
+    // Find current user's rank
+    const allUsers = await this.db
+      .select({
+        userId: users.id,
+        coins: users.coins,
+      })
+      .from(users)
+      .orderBy(desc(users.coins));
+
+    const currentUserIndex = allUsers.findIndex(u => u.userId === currentUserId);
+    const currentUserRank = currentUserIndex !== -1 ? currentUserIndex + 1 : null;
+
+    return { leaderboard, currentUserRank };
   }
 }
 
