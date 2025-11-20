@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   notifyHappiness: boolean("notify_happiness").notNull().default(true),
   notifyChallenges: boolean("notify_challenges").notNull().default(true),
   notifyEvolution: boolean("notify_evolution").notNull().default(true),
+  tutorialCompleted: boolean("tutorial_completed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 

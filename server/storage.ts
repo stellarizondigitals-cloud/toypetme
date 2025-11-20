@@ -50,6 +50,7 @@ export interface IStorage {
     notifyChallenges?: boolean;
     notifyEvolution?: boolean;
   }): Promise<User>;
+  completeTutorial(userId: string, starterPetName: string, starterPetType: string): Promise<{ user: User; pet: Pet }>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -185,6 +186,7 @@ export class MemStorage implements IStorage {
       notifyHappiness: true,
       notifyChallenges: true,
       notifyEvolution: true,
+      tutorialCompleted: false,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -323,6 +325,29 @@ export class MemStorage implements IStorage {
     
     this.users.set(userId, user);
     return user;
+  }
+
+  async completeTutorial(userId: string, starterPetName: string, starterPetType: string): Promise<{ user: User; pet: Pet }> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    if (user.tutorialCompleted) {
+      throw new Error("Tutorial already completed");
+    }
+    
+    // Award 100 starting coins
+    user.coins = Math.min(user.coins + 100, MAX_COINS);
+    user.tutorialCompleted = true;
+    this.users.set(userId, user);
+    
+    // Create the starter pet
+    const pet = await this.createPet({
+      userId,
+      name: starterPetName,
+      type: starterPetType,
+    });
+    
+    return { user, pet };
   }
 
   async updateUserCoins(userId: string, coins: number, gems: number): Promise<User> {
@@ -1197,6 +1222,35 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result[0];
+  }
+
+  async completeTutorial(userId: string, starterPetName: string, starterPetType: string): Promise<{ user: User; pet: Pet }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    if (user.tutorialCompleted) {
+      throw new Error("Tutorial already completed");
+    }
+    
+    // Award 100 starting coins and mark tutorial as completed
+    const newCoins = Math.min(user.coins + 100, MAX_COINS);
+    const updatedUserResult = await this.db
+      .update(users)
+      .set({ 
+        coins: newCoins,
+        tutorialCompleted: true,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    // Create the starter pet
+    const pet = await this.createPet({
+      userId,
+      name: starterPetName,
+      type: starterPetType,
+    });
+    
+    return { user: updatedUserResult[0], pet };
   }
 
   // Pet operations
