@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 **Storage Layer:** Interface-based (`IStorage`) for multi-user support, CRUD for user/pet management, stat decay logic, atomic action execution.
 **API Routes:**
 - **Auth:** Signup, login, logout, Google OAuth, verify, resend verification, password reset, `me`, JWT issuance/refresh.
-- **User:** Profile, toggle premium.
+- **User:** Profile, toggle premium, notification preferences (PATCH /api/user/notifications).
 - **Pet:** Creation, view all, feed, play, clean, sleep.
 - **Shop:** Items, purchase.
 - **Inventory:** View, use items.
@@ -49,6 +49,7 @@ Preferred communication style: Simple, everyday language.
 - **Ad Integration:** Simulated 30-second ads for free users (5 per day limit), 50 coins per ad reward, premium users have no ads.
 - **Premium Monetization:** Manual toggle for premium status, GoPremium page listing benefits, premium badge display.
 - **Daily Challenge System:** 3 random challenges per day (9 predefined types: action-based and stat-based), automatic progress tracking on pet actions, completion detection with progress bars, reward claiming (50-100 coins, 20-50 XP per challenge), database transactions for atomic claim operations, security hardening to prevent double-claiming and progress overflow.
+- **Browser Notification System:** Real-time pet care reminders via native browser notifications, user-configurable preferences (master toggle, hunger/happiness alerts, challenge reminders, evolution notifications), automatic permission request on first visit, 5-minute background polling, 1-hour cooldown per notification type to prevent spam, graceful degradation for unsupported browsers, integration with Profile settings page.
 
 ## External Dependencies
 
