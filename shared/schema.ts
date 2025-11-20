@@ -147,6 +147,30 @@ export const eggs = pgTable("eggs", {
   userIdIdx: index("eggs_user_id_idx").on(table.userId),
 }));
 
+// Mini-games - game definitions and rewards
+export const miniGames = pgTable("mini_games", {
+  id: varchar("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  minCoins: integer("min_coins").notNull().default(20), // Minimum coin reward
+  maxCoins: integer("max_coins").notNull().default(50), // Maximum coin reward
+  cooldownMinutes: integer("cooldown_minutes").notNull().default(60), // Cooldown in minutes
+});
+
+// User mini-game sessions - tracks play history and cooldowns
+export const userMiniGameSessions = pgTable("user_mini_game_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => miniGames.id),
+  score: integer("score").notNull(),
+  coinsEarned: integer("coins_earned").notNull(),
+  playedAt: timestamp("played_at").notNull().default(sql`now()`),
+}, (table) => ({
+  userIdIdx: index("user_mini_game_sessions_user_id_idx").on(table.userId),
+  gameIdIdx: index("user_mini_game_sessions_game_id_idx").on(table.gameId),
+  playedAtIdx: index("user_mini_game_sessions_played_at_idx").on(table.playedAt),
+}));
+
 // Schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -214,6 +238,13 @@ export const insertEggSchema = createInsertSchema(eggs).omit({
   createdAt: true,
 });
 
+export const insertMiniGameSchema = createInsertSchema(miniGames);
+
+export const insertUserMiniGameSessionSchema = createInsertSchema(userMiniGameSessions).omit({
+  id: true,
+  playedAt: true,
+});
+
 // Breeding request schema
 export const startBreedingSchema = z.object({
   parent1Id: z.string().min(1, "Parent 1 ID is required"),
@@ -253,6 +284,12 @@ export type Egg = typeof eggs.$inferSelect;
 
 export type StartBreedingRequest = z.infer<typeof startBreedingSchema>;
 
+export type InsertMiniGame = z.infer<typeof insertMiniGameSchema>;
+export type MiniGame = typeof miniGames.$inferSelect;
+
+export type InsertUserMiniGameSession = z.infer<typeof insertUserMiniGameSessionSchema>;
+export type UserMiniGameSession = typeof userMiniGameSessions.$inferSelect;
+
 // Breeding constants
 export const BREEDING_COST_COINS = 200;
 export const BREEDING_COST_MONEY = 0.99; // £0.99
@@ -264,6 +301,34 @@ export const PET_COLORS = ["brown", "white", "black", "gray", "golden", "pink", 
 export const PET_PATTERNS = ["solid", "spots", "stripes", "patches", "gradient"] as const;
 export const MUTATION_COLORS = ["rainbow", "starry", "crystal", "shadow"] as const; // Special rare colors
 export const MUTATION_PATTERNS = ["sparkles", "swirls", "cosmic", "flame"] as const; // Special rare patterns
+
+// Mini-game definitions
+export const MINI_GAMES: MiniGame[] = [
+  {
+    id: "memory-match",
+    name: "Memory Match",
+    description: "Match pairs of cards to test your memory and earn coins!",
+    minCoins: 20,
+    maxCoins: 50,
+    cooldownMinutes: 60, // 1 hour cooldown
+  },
+  {
+    id: "reaction-time",
+    name: "Reaction Time",
+    description: "Tap when the color changes! Test your reflexes for rewards.",
+    minCoins: 20,
+    maxCoins: 50,
+    cooldownMinutes: 60, // 1 hour cooldown
+  },
+  {
+    id: "feed-frenzy",
+    name: "Feed Frenzy",
+    description: "Catch falling food items to feed your hungry pet and earn coins!",
+    minCoins: 20,
+    maxCoins: 50,
+    cooldownMinutes: 60, // 1 hour cooldown
+  },
+];
 
 // Daily login bonus and coin cap
 export const DAILY_LOGIN_BONUS = 50;
