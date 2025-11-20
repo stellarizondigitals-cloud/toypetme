@@ -1292,6 +1292,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== MINI-GAME ROUTES =====
+  
+  // Zod schema for playing a mini-game
+  const playMiniGameSchema = z.object({
+    score: z.number().min(0, "Score cannot be negative").max(1000, "Invalid score"),
+  });
+  
+  // Get all available mini-games
+  app.get("/api/minigames", requireAuth, async (req, res) => {
+    try {
+      const games = await storage.getMiniGames();
+      res.json(games);
+    } catch (error) {
+      console.error("Get mini-games error:", error);
+      res.status(500).json({ error: "Failed to fetch mini-games" });
+    }
+  });
+
+  // Play a mini-game (with cooldown enforcement and rewards)
+  app.post("/api/minigames/:id/play", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const gameId = req.params.id;
+      
+      // Validate request body
+      const validation = playMiniGameSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { score } = validation.data;
+
+      // Check if game exists
+      const games = await storage.getMiniGames();
+      const game = games.find(g => g.id === gameId);
+      if (!game) {
+        return res.status(404).json({ error: "Mini-game not found" });
+      }
+
+      // Check cooldown (1 hour = 3600000ms)
+      const lastSession = await storage.getLastGameSession(userId, gameId);
+      if (lastSession) {
+        const timeSinceLastPlay = Date.now() - lastSession.playedAt.getTime();
+        const cooldownMs = 3600000; // 1 hour
+        
+        if (timeSinceLastPlay < cooldownMs) {
+          const remainingMs = cooldownMs - timeSinceLastPlay;
+          const remainingMinutes = Math.ceil(remainingMs / 60000);
+          return res.status(429).json({ 
+            error: `Cooldown active. Try again in ${remainingMinutes} minute(s).`,
+            remainingMs 
+          });
+        }
+      }
+
+      // Calculate coin reward based on score (20-50 coins)
+      // Linear scaling: score of 0 = 20 coins, score of 1000 = 50 coins
+      const minReward = 20;
+      const maxReward = 50;
+      const rewardRange = maxReward - minReward;
+      const scorePercent = Math.min(score / 1000, 1); // Cap at 100%
+      const potentialCoins = Math.floor(minReward + (rewardRange * scorePercent));
+
+      // Award coins to user (with cap enforcement)
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const MAX_COINS = 5000;
+      const newCoins = Math.min(user.coins + potentialCoins, MAX_COINS);
+      const actualCoinsAwarded = newCoins - user.coins; // Account for cap
+      
+      await storage.updateUserCoins(userId, newCoins, user.gems);
+
+      // Record game session with actual coins awarded
+      const session = await storage.recordGameSession({
+        userId,
+        gameId,
+        score,
+        coinsEarned: actualCoinsAwarded,
+      });
+
+      res.json({ 
+        session,
+        coinsEarned: actualCoinsAwarded,
+        newBalance: newCoins,
+      });
+    } catch (error: any) {
+      console.error("Play mini-game error:", error);
+      res.status(500).json({ error: error.message || "Failed to play mini-game" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
