@@ -8,6 +8,7 @@ import AdBanner from "@/components/AdBanner";
 import BottomTabNav from "@/components/BottomTabNav";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import EvolutionAnimation from "@/components/EvolutionAnimation";
+import { TutorialContainer } from "@/components/tutorial/TutorialContainer";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
@@ -28,12 +29,20 @@ export default function GameHome() {
     newLevel: 1,
   });
   const [dailyRewardClaimed, setDailyRewardClaimed] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Fetch user data
   const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/me"],
     retry: 3,
   });
+
+  // Check if user needs to see tutorial
+  useEffect(() => {
+    if (user && !user.tutorialCompleted) {
+      setShowTutorial(true);
+    }
+  }, [user]);
 
   // Fetch pet data
   const { data: pet, isLoading: petLoading, isError: petError } = useQuery<Pet>({
@@ -238,7 +247,33 @@ export default function GameHome() {
     );
   }
 
-  if (userError || petError || !user || !pet) {
+  if (userError || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center space-y-4 p-4">
+          <div className="text-6xl">😔</div>
+          <h2 className="text-2xl font-bold">Oops! Something went wrong</h2>
+          <p className="text-muted-foreground">
+            We couldn't load your account. Please try refreshing the page.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover-elevate active-elevate-2"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show tutorial for new users
+  if (showTutorial) {
+    return <TutorialContainer onComplete={() => setShowTutorial(false)} />;
+  }
+
+  // After tutorial, we need a pet
+  if (petError || !pet) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center space-y-4 p-4">

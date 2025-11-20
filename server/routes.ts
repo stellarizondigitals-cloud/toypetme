@@ -91,11 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to send verification email:", err);
       });
 
-      // Create default pet for the user
-      await storage.createPet({
-        userId: user.id,
-        name: "Fluffy",
-      });
+      // Note: Pet creation now happens in the tutorial flow
+      // Users will choose their starter pet during the tutorial
 
       // Regenerate session to prevent session fixation attacks
       req.session.regenerate((err) => {
@@ -539,6 +536,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to complete tutorial";
+      if (errorMessage === "Tutorial already completed") {
+        res.status(400).json({ error: errorMessage });
+      } else {
+        res.status(500).json({ error: errorMessage });
+      }
+    }
+  });
+
+  // Skip tutorial (creates default pet, no bonus)
+  app.post("/api/tutorial/skip", requireAuth, async (req, res) => {
+    try {
+      const result = await storage.skipTutorial(req.session.userId!);
+      const { passwordHash: _, ...userWithoutPassword } = result.user;
+      
+      res.json({
+        user: userWithoutPassword,
+        pet: result.pet,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to skip tutorial";
       if (errorMessage === "Tutorial already completed") {
         res.status(400).json({ error: errorMessage });
       } else {

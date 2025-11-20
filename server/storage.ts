@@ -51,6 +51,7 @@ export interface IStorage {
     notifyEvolution?: boolean;
   }): Promise<User>;
   completeTutorial(userId: string, starterPetName: string, starterPetType: string): Promise<{ user: User; pet: Pet }>;
+  skipTutorial(userId: string): Promise<{ user: User; pet: Pet }>;
   
   // Pet operations
   getPet(id: string): Promise<Pet | undefined>;
@@ -345,6 +346,28 @@ export class MemStorage implements IStorage {
       userId,
       name: starterPetName,
       type: starterPetType,
+    });
+    
+    return { user, pet };
+  }
+
+  async skipTutorial(userId: string): Promise<{ user: User; pet: Pet }> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    if (user.tutorialCompleted) {
+      throw new Error("Tutorial already completed");
+    }
+    
+    // Mark tutorial as completed (no coin bonus)
+    user.tutorialCompleted = true;
+    this.users.set(userId, user);
+    
+    // Create a default starter pet
+    const pet = await this.createPet({
+      userId,
+      name: "Buddy",
+      type: "Fluffy",
     });
     
     return { user, pet };
@@ -1248,6 +1271,33 @@ export class DbStorage implements IStorage {
       userId,
       name: starterPetName,
       type: starterPetType,
+    });
+    
+    return { user: updatedUserResult[0], pet };
+  }
+
+  async skipTutorial(userId: string): Promise<{ user: User; pet: Pet }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    
+    if (user.tutorialCompleted) {
+      throw new Error("Tutorial already completed");
+    }
+    
+    // Mark tutorial as completed (no coin bonus)
+    const updatedUserResult = await this.db
+      .update(users)
+      .set({ 
+        tutorialCompleted: true,
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    // Create a default starter pet
+    const pet = await this.createPet({
+      userId,
+      name: "Buddy",
+      type: "Fluffy",
     });
     
     return { user: updatedUserResult[0], pet };

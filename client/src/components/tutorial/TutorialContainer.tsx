@@ -25,16 +25,17 @@ export function TutorialContainer({ onComplete }: TutorialContainerProps) {
       return await response.json();
     },
     onSuccess: (data: { user: any; pet: any }) => {
-      // Update user in cache
+      // Update caches with the new data
       queryClient.setQueryData(["/api/me"], data.user);
+      queryClient.setQueryData(["/api/pet"], data.pet);
       
-      // Invalidate queries to refresh data
+      // Invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
       
       toast({
         title: "Welcome to ToyPetMe!",
-        description: `${selectedPetName} is ready to play! You've earned 100 bonus coins!`,
+        description: `${data.pet.name} is ready to play! You've earned 100 bonus coins!`,
       });
       
       onComplete();
@@ -48,9 +49,39 @@ export function TutorialContainer({ onComplete }: TutorialContainerProps) {
     },
   });
 
-  const handleSkip = () => {
-    if (confirm("Are you sure you want to skip the tutorial? You'll miss out on 100 bonus coins!")) {
+  const skipTutorialMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/tutorial/skip");
+      return await response.json();
+    },
+    onSuccess: (data: { user: any; pet: any }) => {
+      // Update caches with the new data
+      queryClient.setQueryData(["/api/me"], data.user);
+      queryClient.setQueryData(["/api/pet"], data.pet);
+      
+      // Invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pet"] });
+      
+      toast({
+        title: "Tutorial Skipped",
+        description: `Your pet ${data.pet.name} is ready! (No bonus coins awarded)`,
+      });
+      
       onComplete();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to skip tutorial",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSkip = () => {
+    if (confirm("Are you sure you want to skip the tutorial? You'll miss out on 100 bonus coins and get a random starter pet!")) {
+      skipTutorialMutation.mutate();
     }
   };
 
