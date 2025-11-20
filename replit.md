@@ -31,6 +31,7 @@ Preferred communication style: Simple, everyday language.
 - **Mini-games:** Ball catch.
 - **Leaderboard:** Global rankings (highest level, most pets, total coins).
 - **Challenges:** Daily challenges (GET /api/challenges/daily, POST /api/challenges/:id/claim), automatic progress tracking.
+- **Breeding:** Start breeding (POST /api/breeding/start), view breeding records (GET /api/breeding), view eggs (GET /api/eggs), hatch eggs (POST /api/eggs/:id/hatch).
 
 ### Notable Architecture Decisions
 - **Monorepo Structure:** `shared/` directory for client-server type safety.
@@ -53,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 - **Progressive Web App (PWA):** Full PWA implementation with manifest.json, service worker for offline functionality (cache-first strategy), installable app experience with smart install prompt (3-second delay, localStorage persistence), production-only service worker registration, user-controlled update prompts (prevents disruptive reloads), comprehensive mobile meta tags for iOS and Android, viewport optimization with notch support.
 - **Mobile Touch Optimization:** WCAG 2.5.5 compliant button sizes (all buttons meet 44px minimum touch target), haptic feedback integration using Vibration API (6 feedback patterns: light, medium, heavy, success, warning, error), integrated haptic feedback in pet action buttons (medium on action, warning on disabled), mobile-first responsive design, no user scaling for app-like experience.
 - **First-Time User Tutorial:** Interactive onboarding system for new users with 3-step flow: welcome screen introduction, starter pet selection (3 choices: Fluffy Bunny, Sparky Pup, Leafy Turtle), and interactive action demonstration showing feed/play/clean mechanics. Tutorial completion awards 100 bonus coins and creates user's first pet. Skip option available at each step (creates default "Buddy" pet without bonus). Signup no longer creates automatic pet; tutorial handles first pet creation. Show-once logic checks `tutorialCompleted` flag and pet existence. API endpoints: POST /api/tutorial/complete (with pet selection) and POST /api/tutorial/skip (defaults to Buddy/Fluffy).
+- **Pet Breeding System:** Two-pet breeding with genetic inheritance (50% from each parent, 5% mutation chance), 200 coin or £0.99 payment options, 24-hour incubation period, egg hatching mechanic. Genetics module (server/genetics.ts) handles trait inheritance with 8 standard colors, 5 patterns, and 4 special mutations (rainbow, starry, crystal, shadow). Background job checks breeding completion and generates eggs with inherited traits. API endpoints support breeding start, record viewing, egg management, and hatching. Database schema includes breedingRecords and eggs tables with full genetic trait tracking.
 
 ## External Dependencies
 

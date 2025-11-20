@@ -7,6 +7,7 @@ import { generateToken, sendVerificationEmail, sendPasswordResetEmail } from "./
 import rateLimit from "express-rate-limit";
 import passport from "passport";
 import { generateJWT, generateRefreshToken, verifyRefreshToken } from "./jwt";
+import { z } from "zod";
 
 // Helper to evaluate cooldown status
 function evaluateCooldown(lastActionTime: Date | null, cooldownMinutes: number): { ready: boolean; remainingSeconds: number } {
@@ -1197,6 +1198,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(500).json({ error: "Failed to claim challenge reward" });
+    }
+  });
+
+  // ===== BREEDING ROUTES =====
+  
+  // Zod schema for breeding start request
+  const startBreedingSchema = z.object({
+    parent1Id: z.string().min(1, "Parent 1 ID is required"),
+    parent2Id: z.string().min(1, "Parent 2 ID is required"),
+  }).refine(data => data.parent1Id !== data.parent2Id, {
+    message: "Cannot breed a pet with itself",
+  });
+  
+  // Start breeding two pets
+  app.post("/api/breeding/start", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      
+      // Validate request body
+      const validation = startBreedingSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: validation.error.errors[0].message 
+        });
+      }
+
+      const { parent1Id, parent2Id } = validation.data;
+
+      // TODO: Implement real payment processing for money option
+      // For now, always charge coins to prevent free breeding exploit
+      // When Stripe/PayPal is integrated, add payWithMoney validation here
+      const breedingRecord = await storage.startBreeding(
+        userId,
+        parent1Id,
+        parent2Id,
+        false // Always use coins for now (prevent exploit)
+      );
+
+      res.json(breedingRecord);
+    } catch (error: any) {
+      console.error("Start breeding error:", error);
+      
+      // Return specific error messages
+      if (error.message.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      } else if (error.message.includes("Not enough coins")) {
+        return res.status(400).json({ error: error.message });
+      } else if (error.message.includes("only breed your own")) {
+        return res.status(403).json({ error: error.message });
+      }
+      
+      // Unexpected errors are server errors
+      res.status(500).json({ error: error.message || "Failed to start breeding" });
+    }
+  });
+
+  // Get user's breeding records
+  app.get("/api/breeding", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const records = await storage.getBreedingRecords(userId);
+      res.json(records);
+    } catch (error) {
+      console.error("Get breeding records error:", error);
+      res.status(500).json({ error: "Failed to fetch breeding records" });
+    }
+  });
+
+  // Get user's eggs
+  app.get("/api/eggs", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const eggs = await storage.getUserEggs(userId);
+      res.json(eggs);
+    } catch (error) {
+      console.error("Get eggs error:", error);
+      res.status(500).json({ error: "Failed to fetch eggs" });
+    }
+  });
+
+  // Hatch an egg
+  app.post("/api/eggs/:id/hatch", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+
+      const result = await storage.hatchEgg(userId, id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Hatch egg error:", error);
+      res.status(400).json({ error: error.message || "Failed to hatch egg" });
     }
   });
 
