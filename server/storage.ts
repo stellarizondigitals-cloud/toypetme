@@ -7,18 +7,23 @@ import {
   type InsertShopItem,
   type Inventory,
   type InsertInventory,
+  type Challenge,
+  type InsertChallenge,
+  type UserChallenge,
+  type InsertUserChallenge,
   PET_ACTIONS,
   type PetActionType,
   calculateStatDecay,
   DAILY_LOGIN_BONUS,
   MAX_COINS,
-  SHOP_ITEMS
+  SHOP_ITEMS,
+  DAILY_CHALLENGES
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, and, desc, sql as sqlOp, count, max } from "drizzle-orm";
-import { users, pets, shopItems, inventory, calculateLevelAndEvolution } from "@shared/schema";
+import { eq, and, desc, sql as sqlOp, count, max, gte, lt } from "drizzle-orm";
+import { users, pets, shopItems, inventory, challenges, userChallenges, calculateLevelAndEvolution } from "@shared/schema";
 
 export interface IStorage {
   // User operations
@@ -83,6 +88,11 @@ export interface IStorage {
     leaderboard: Array<{ userId: string; username: string; coins: number; rank: number }>;
     currentUserRank: number | null;
   }>;
+
+  // Daily Challenges
+  getDailyChallenges(userId: string): Promise<Array<UserChallenge & { challenge: Challenge }>>;
+  updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void>;
+  claimChallengeReward(userId: string, userChallengeId: string): Promise<{ user: User; challenge: UserChallenge & { challenge: Challenge } }>;
 }
 
 export class MemStorage implements IStorage {
@@ -90,18 +100,28 @@ export class MemStorage implements IStorage {
   private pets: Map<string, Pet>;
   private shopItems: Map<string, ShopItem>;
   private inventory: Map<string, Inventory[]>;
+  private challenges: Map<string, Challenge>;
+  private userChallenges: Map<string, UserChallenge[]>;
 
   constructor() {
     this.users = new Map();
     this.pets = new Map();
     this.shopItems = new Map();
     this.inventory = new Map();
+    this.challenges = new Map();
+    this.userChallenges = new Map();
     this.initializeShopItems();
+    this.initializeChallenges();
   }
 
   private initializeShopItems() {
     // Load canonical shop catalog (9 items across Food/Toys/Cosmetics)
     SHOP_ITEMS.forEach(item => this.shopItems.set(item.id, item));
+  }
+
+  private initializeChallenges() {
+    // Load predefined challenges
+    DAILY_CHALLENGES.forEach(challenge => this.challenges.set(challenge.id, challenge));
   }
 
   // User methods
@@ -682,6 +702,125 @@ export class MemStorage implements IStorage {
 
     return { leaderboard, currentUserRank };
   }
+
+  // Daily Challenges
+  async getDailyChallenges(userId: string): Promise<Array<UserChallenge & { challenge: Challenge }>> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get or create user challenges for today
+    let userDailyChallenges = this.userChallenges.get(userId) || [];
+    
+    // Filter challenges assigned today and not claimed
+    const todaysChallenges = userDailyChallenges.filter(uc => {
+      const assignedDate = new Date(uc.assignedDate);
+      assignedDate.setHours(0, 0, 0, 0);
+      return assignedDate.getTime() === today.getTime();
+    });
+
+    // If no challenges for today or less than 3, assign new random ones
+    if (todaysChallenges.length < 3) {
+      const allChallengeIds = Array.from(this.challenges.keys());
+      const existingIds = new Set(todaysChallenges.map(c => c.challengeId));
+      
+      // Get random challenges that haven't been assigned today
+      const availableIds = allChallengeIds.filter(id => !existingIds.has(id));
+      const shuffled = availableIds.sort(() => Math.random() - 0.5);
+      const needed = 3 - todaysChallenges.length;
+      const toAssign = shuffled.slice(0, needed);
+
+      // Create new user challenges
+      for (const challengeId of toAssign) {
+        const newUserChallenge: UserChallenge = {
+          id: randomUUID(),
+          userId,
+          challengeId,
+          progress: 0,
+          completed: false,
+          claimed: false,
+          assignedDate: today,
+          completedAt: null,
+          claimedAt: null,
+        };
+        todaysChallenges.push(newUserChallenge);
+        userDailyChallenges.push(newUserChallenge);
+      }
+
+      this.userChallenges.set(userId, userDailyChallenges);
+    }
+
+    // Map to include challenge details
+    return todaysChallenges.map(uc => {
+      const challenge = this.challenges.get(uc.challengeId)!;
+      return { ...uc, challenge };
+    });
+  }
+
+  async updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void> {
+    const userDailyChallenges = this.userChallenges.get(userId) || [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find today's challenges of this type
+    const relevantChallenges = userDailyChallenges.filter(uc => {
+      const challenge = this.challenges.get(uc.challengeId);
+      if (!challenge || challenge.type !== challengeType) return false;
+      
+      const assignedDate = new Date(uc.assignedDate);
+      assignedDate.setHours(0, 0, 0, 0);
+      return assignedDate.getTime() === today.getTime() && !uc.completed;
+    });
+
+    // Update progress
+    for (const uc of relevantChallenges) {
+      const challenge = this.challenges.get(uc.challengeId)!;
+      
+      if (challengeType === 'happiness' || challengeType === 'health' || challengeType === 'energy') {
+        // For stat-based challenges, set progress to current value
+        uc.progress = incrementBy;
+      } else {
+        // For action-based challenges, increment
+        uc.progress += incrementBy;
+      }
+
+      // Check if completed
+      if (uc.progress >= challenge.target) {
+        uc.completed = true;
+        uc.completedAt = new Date();
+      }
+    }
+  }
+
+  async claimChallengeReward(userId: string, userChallengeId: string): Promise<{ user: User; challenge: UserChallenge & { challenge: Challenge } }> {
+    const userDailyChallenges = this.userChallenges.get(userId) || [];
+    const userChallenge = userDailyChallenges.find(uc => uc.id === userChallengeId);
+
+    if (!userChallenge) {
+      throw new Error('Challenge not found');
+    }
+
+    if (!userChallenge.completed) {
+      throw new Error('Challenge not completed');
+    }
+
+    if (userChallenge.claimed) {
+      throw new Error('Reward already claimed');
+    }
+
+    const challenge = this.challenges.get(userChallenge.challengeId)!;
+    const user = this.users.get(userId)!;
+
+    // Award coins and mark as claimed
+    const newCoins = Math.min(user.coins + challenge.coinReward, MAX_COINS);
+    user.coins = newCoins;
+    userChallenge.claimed = true;
+    userChallenge.claimedAt = new Date();
+
+    return {
+      user,
+      challenge: { ...userChallenge, challenge },
+    };
+  }
 }
 
 // Database Storage Implementation
@@ -693,6 +832,7 @@ export class DbStorage implements IStorage {
     const sql = neon(connectionString);
     this.db = drizzle(sql);
     this.initializeShopItems();
+    this.initializeChallenges();
   }
 
   private async initializeShopItems() {
@@ -1391,6 +1531,190 @@ export class DbStorage implements IStorage {
     }
 
     return { leaderboard, currentUserRank };
+  }
+
+  // Daily Challenges
+  async getDailyChallenges(userId: string): Promise<Array<UserChallenge & { challenge: Challenge }>> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get user challenges assigned today
+    const todaysChallenges = await this.db
+      .select()
+      .from(userChallenges)
+      .where(and(
+        eq(userChallenges.userId, userId),
+        gte(userChallenges.assignedDate, today),
+        lt(userChallenges.assignedDate, tomorrow)
+      ));
+
+    // If less than 3, assign new random ones
+    if (todaysChallenges.length < 3) {
+      // Get all available challenges
+      const allChallenges = await this.db.select().from(challenges);
+      const existingIds = new Set(todaysChallenges.map(c => c.challengeId));
+      
+      // Get random challenges that haven't been assigned today
+      const availableChallenges = allChallenges.filter(c => !existingIds.has(c.id));
+      const shuffled = availableChallenges.sort(() => Math.random() - 0.5);
+      const needed = 3 - todaysChallenges.length;
+      const toAssign = shuffled.slice(0, needed);
+
+      // Create new user challenges
+      for (const challenge of toAssign) {
+        const [newUserChallenge] = await this.db
+          .insert(userChallenges)
+          .values({
+            userId,
+            challengeId: challenge.id,
+            progress: 0,
+            completed: false,
+            claimed: false,
+            assignedDate: today,
+          })
+          .returning();
+        todaysChallenges.push(newUserChallenge);
+      }
+    }
+
+    // Fetch challenge details for each user challenge
+    const challengesWithDetails = await Promise.all(
+      todaysChallenges.map(async (uc) => {
+        const [challenge] = await this.db
+          .select()
+          .from(challenges)
+          .where(eq(challenges.id, uc.challengeId))
+          .limit(1);
+        return { ...uc, challenge };
+      })
+    );
+
+    return challengesWithDetails;
+  }
+
+  async updateChallengeProgress(userId: string, challengeType: string, incrementBy: number): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Find today's uncompleted challenges of this type
+    const todaysChallenges = await this.db
+      .select()
+      .from(userChallenges)
+      .where(and(
+        eq(userChallenges.userId, userId),
+        eq(userChallenges.completed, false),
+        gte(userChallenges.assignedDate, today),
+        lt(userChallenges.assignedDate, tomorrow)
+      ));
+
+    // Update progress for matching challenge types
+    for (const uc of todaysChallenges) {
+      const [challenge] = await this.db
+        .select()
+        .from(challenges)
+        .where(eq(challenges.id, uc.challengeId))
+        .limit(1);
+
+      if (!challenge || challenge.type !== challengeType) continue;
+
+      let newProgress = uc.progress;
+      if (challengeType === 'happiness' || challengeType === 'health' || challengeType === 'energy') {
+        // For stat-based challenges, set progress to current value
+        newProgress = incrementBy;
+      } else {
+        // For action-based challenges, increment
+        newProgress += incrementBy;
+      }
+
+      // Check if completed
+      const isCompleted = newProgress >= challenge.target;
+      
+      await this.db
+        .update(userChallenges)
+        .set({
+          progress: newProgress,
+          completed: isCompleted,
+          completedAt: isCompleted ? new Date() : uc.completedAt,
+        })
+        .where(eq(userChallenges.id, uc.id));
+    }
+  }
+
+  async claimChallengeReward(userId: string, userChallengeId: string): Promise<{ user: User; challenge: UserChallenge & { challenge: Challenge } }> {
+    // Get the user challenge
+    const [userChallenge] = await this.db
+      .select()
+      .from(userChallenges)
+      .where(and(
+        eq(userChallenges.id, userChallengeId),
+        eq(userChallenges.userId, userId)
+      ))
+      .limit(1);
+
+    if (!userChallenge) {
+      throw new Error('Challenge not found');
+    }
+
+    if (!userChallenge.completed) {
+      throw new Error('Challenge not completed');
+    }
+
+    if (userChallenge.claimed) {
+      throw new Error('Reward already claimed');
+    }
+
+    // Get challenge details
+    const [challenge] = await this.db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.id, userChallenge.challengeId))
+      .limit(1);
+
+    // Get user
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Award coins (respecting MAX_COINS cap)
+    const newCoins = Math.min(user.coins + challenge.coinReward, MAX_COINS);
+    
+    // Update user coins and mark challenge as claimed
+    const [updatedUser] = await this.db
+      .update(users)
+      .set({ coins: newCoins })
+      .where(eq(users.id, userId))
+      .returning();
+
+    const [updatedChallenge] = await this.db
+      .update(userChallenges)
+      .set({ 
+        claimed: true,
+        claimedAt: new Date(),
+      })
+      .where(eq(userChallenges.id, userChallengeId))
+      .returning();
+
+    return {
+      user: updatedUser,
+      challenge: { ...updatedChallenge, challenge },
+    };
+  }
+
+  private async initializeChallenges() {
+    const existing = await this.db.select().from(challenges);
+    if (existing.length === 0) {
+      await this.db.insert(challenges).values(DAILY_CHALLENGES);
+    }
   }
 }
 
