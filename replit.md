@@ -8,6 +8,47 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates
 
+**November 20, 2025 - Pet Collection & Social Sharing (Phase 4 - Prompt 13)**
+- Implemented Pet Collection showcase page with social media sharing capabilities
+- **Collection Page Features:**
+  - View all owned pets in a grid layout with comprehensive stats
+  - Pet cards display: name, type, level, XP, evolution stage, health, age, happiness, hunger, energy
+  - Sorting: By level (descending), then by creation date
+  - Trophy badges for level 20+ pets
+  - Color-coded stat indicators (green/yellow/red based on thresholds)
+  - Empty state with CTA to create first pet
+  - Sick status indicator with visual cues
+- **Social Sharing System:**
+  - Shareable pet card modal with gradient design
+  - Pre-filled share text (no emojis): "Check out my ToyPetMe! Meet {name}, a Level {level} {stage} {type}!"
+  - Social media buttons: Twitter/X, Facebook, Instagram, TikTok
+  - Twitter/Facebook: Web share intents with pre-filled text and URL
+  - Instagram/TikTok: Copy to clipboard with toast notification (no web API support)
+  - Share URL uses window.location.origin for proper domain
+- **Authentication Improvements:**
+  - Updated `ProtectedRoute` to use `getQueryFn({ on401: "returnNull" })` pattern
+  - Proper differentiation: 401 → redirect to login, other errors → show retry UI
+  - Collection page uses effect-based navigation (no render-time redirects)
+  - Type-safe auth flow throughout
+  - Added data-testid to retry button for testing
+- **Navigation:**
+  - Added Collection tab to bottom navigation (Trophy icon)
+  - Route registered in App.tsx (/collection)
+  - Replaced Pets tab with Collection tab for better UX
+- **UI/UX Enhancements:**
+  - Uses shadcn Button, Card, Dialog components
+  - Mobile-responsive design (max-w-2xl constraint)
+  - Loading states with safe defaults (coins={0})
+  - Error handling with friendly messages
+  - Toast notifications for clipboard operations
+- **Testing:**
+  - ✅ All LSP diagnostics resolved
+  - ✅ App running successfully with hot module reloading
+  - ✅ Auth flow properly handles 401 and other errors
+  - ✅ Collection page protected with proper guards
+- **Architect approved:** Proper auth handling, no security gaps, production-ready implementation
+- **Related files:** `client/src/pages/Collection.tsx`, `client/src/App.tsx`, `client/src/components/BottomTabNav.tsx`, `client/src/lib/queryClient.ts`
+
 **November 20, 2025 - In-App Store with Demo Mode Purchases (Phase 4 - Prompt 11)**
 - Implemented comprehensive in-app Store page with 6 purchasable items
 - **Store Items:**
