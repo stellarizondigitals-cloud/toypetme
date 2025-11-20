@@ -521,6 +521,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete tutorial and create starter pet
+  app.post("/api/tutorial/complete", requireAuth, async (req, res) => {
+    try {
+      const { petName, petType } = req.body;
+      
+      if (!petName || !petType) {
+        return res.status(400).json({ error: "Pet name and type are required" });
+      }
+      
+      const result = await storage.completeTutorial(req.session.userId!, petName, petType);
+      const { passwordHash: _, ...userWithoutPassword } = result.user;
+      
+      res.json({
+        user: userWithoutPassword,
+        pet: result.pet,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to complete tutorial";
+      if (errorMessage === "Tutorial already completed") {
+        res.status(400).json({ error: errorMessage });
+      } else {
+        res.status(500).json({ error: errorMessage });
+      }
+    }
+  });
+
   // Watch ad for bonus (free users only)
   app.post("/api/ads/watch-bonus", requireAuth, async (req, res) => {
     try {
