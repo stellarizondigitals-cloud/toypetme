@@ -29,7 +29,7 @@ import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and, desc, sql as sqlOp, count, max, gte, lt } from "drizzle-orm";
-import { users, pets, shopItems, inventory, challenges, userChallenges, breedingRecords, eggs, calculateLevelAndEvolution } from "@shared/schema";
+import { users, pets, shopItems, inventory, challenges, userChallenges, breedingRecords, eggs, miniGames, userMiniGameSessions, calculateLevelAndEvolution, MINI_GAMES } from "@shared/schema";
 import { inheritTraits, generateBabyName, generateRandomTraits } from "./genetics";
 
 export interface IStorage {
@@ -117,6 +117,12 @@ export interface IStorage {
   checkAndCompleteBreeding(): Promise<void>; // Check all breeding records and create eggs when ready
   hatchEgg(userId: string, eggId: string): Promise<{ egg: Egg; pet: Pet }>;
   getUserEggs(userId: string): Promise<Egg[]>;
+
+  // Mini-games
+  getMiniGames(): Promise<MiniGame[]>;
+  getUserMiniGameSessions(userId: string, gameId?: string): Promise<UserMiniGameSession[]>;
+  getLastGameSession(userId: string, gameId: string): Promise<UserMiniGameSession | undefined>;
+  recordGameSession(session: InsertUserMiniGameSession): Promise<UserMiniGameSession>;
 }
 
 export class MemStorage implements IStorage {
@@ -128,6 +134,8 @@ export class MemStorage implements IStorage {
   private userChallenges: Map<string, UserChallenge[]>;
   private breedingRecords: Map<string, BreedingRecord>;
   private eggs: Map<string, Egg>;
+  private miniGames: Map<string, MiniGame>;
+  private userMiniGameSessions: Map<string, UserMiniGameSession[]>;
 
   constructor() {
     this.users = new Map();
@@ -138,8 +146,11 @@ export class MemStorage implements IStorage {
     this.userChallenges = new Map();
     this.breedingRecords = new Map();
     this.eggs = new Map();
+    this.miniGames = new Map();
+    this.userMiniGameSessions = new Map();
     this.initializeShopItems();
     this.initializeChallenges();
+    this.initializeMiniGames();
   }
 
   private initializeShopItems() {
@@ -150,6 +161,11 @@ export class MemStorage implements IStorage {
   private initializeChallenges() {
     // Load predefined challenges
     DAILY_CHALLENGES.forEach(challenge => this.challenges.set(challenge.id, challenge));
+  }
+
+  private initializeMiniGames() {
+    // Load predefined mini-games
+    MINI_GAMES.forEach(game => this.miniGames.set(game.id, game));
   }
 
   // User methods
@@ -1108,6 +1124,45 @@ export class MemStorage implements IStorage {
   async getUserEggs(userId: string): Promise<Egg[]> {
     return Array.from(this.eggs.values()).filter(egg => egg.userId === userId);
   }
+
+  // Mini-game methods
+  async getMiniGames(): Promise<MiniGame[]> {
+    return Array.from(this.miniGames.values());
+  }
+
+  async getUserMiniGameSessions(userId: string, gameId?: string): Promise<UserMiniGameSession[]> {
+    const sessions = this.userMiniGameSessions.get(userId) || [];
+    if (gameId) {
+      return sessions.filter(s => s.gameId === gameId);
+    }
+    return sessions;
+  }
+
+  async getLastGameSession(userId: string, gameId: string): Promise<UserMiniGameSession | undefined> {
+    const sessions = this.userMiniGameSessions.get(userId) || [];
+    const gameSessions = sessions.filter(s => s.gameId === gameId);
+    if (gameSessions.length === 0) return undefined;
+    
+    // Return the most recent session
+    return gameSessions.reduce((latest, current) => 
+      current.playedAt > latest.playedAt ? current : latest
+    );
+  }
+
+  async recordGameSession(session: InsertUserMiniGameSession): Promise<UserMiniGameSession> {
+    const id = randomUUID();
+    const newSession: UserMiniGameSession = {
+      id,
+      ...session,
+      playedAt: new Date(),
+    };
+
+    const userSessions = this.userMiniGameSessions.get(session.userId) || [];
+    userSessions.push(newSession);
+    this.userMiniGameSessions.set(session.userId, userSessions);
+
+    return newSession;
+  }
 }
 
 // Database Storage Implementation
@@ -1120,6 +1175,7 @@ export class DbStorage implements IStorage {
     this.db = drizzle(sql);
     this.initializeShopItems();
     this.initializeChallenges();
+    this.initializeMiniGames();
   }
 
   private async initializeShopItems() {
@@ -2129,6 +2185,13 @@ export class DbStorage implements IStorage {
     }
   }
 
+  private async initializeMiniGames() {
+    const existing = await this.db.select().from(miniGames);
+    if (existing.length === 0) {
+      await this.db.insert(miniGames).values(MINI_GAMES);
+    }
+  }
+
   // Breeding methods
   async startBreeding(userId: string, parent1Id: string, parent2Id: string, payWithMoney: boolean): Promise<BreedingRecord> {
     const user = await this.getUser(userId);
@@ -2297,6 +2360,57 @@ export class DbStorage implements IStorage {
       .select()
       .from(eggs)
       .where(eq(eggs.userId, userId));
+  }
+
+  // Mini-game methods
+  async getMiniGames(): Promise<MiniGame[]> {
+    return await this.db.select().from(miniGames);
+  }
+
+  async getUserMiniGameSessions(userId: string, gameId?: string): Promise<UserMiniGameSession[]> {
+    if (gameId) {
+      return await this.db
+        .select()
+        .from(userMiniGameSessions)
+        .where(
+          and(
+            eq(userMiniGameSessions.userId, userId),
+            eq(userMiniGameSessions.gameId, gameId)
+          )
+        )
+        .orderBy(desc(userMiniGameSessions.playedAt));
+    }
+    
+    return await this.db
+      .select()
+      .from(userMiniGameSessions)
+      .where(eq(userMiniGameSessions.userId, userId))
+      .orderBy(desc(userMiniGameSessions.playedAt));
+  }
+
+  async getLastGameSession(userId: string, gameId: string): Promise<UserMiniGameSession | undefined> {
+    const result = await this.db
+      .select()
+      .from(userMiniGameSessions)
+      .where(
+        and(
+          eq(userMiniGameSessions.userId, userId),
+          eq(userMiniGameSessions.gameId, gameId)
+        )
+      )
+      .orderBy(desc(userMiniGameSessions.playedAt))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async recordGameSession(session: InsertUserMiniGameSession): Promise<UserMiniGameSession> {
+    const [newSession] = await this.db
+      .insert(userMiniGameSessions)
+      .values(session)
+      .returning();
+    
+    return newSession;
   }
 }
 
