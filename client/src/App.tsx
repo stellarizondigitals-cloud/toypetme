@@ -20,6 +20,7 @@ import Collection from "@/pages/Collection";
 import Leaderboard from "@/pages/Leaderboard";
 import Challenges from "@/pages/Challenges";
 import GoPremium from "@/pages/GoPremium";
+import ARView from "@/pages/ARView";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Profile from "@/pages/Profile";
@@ -123,6 +124,9 @@ function Router() {
       </Route>
       <Route path="/leaderboard">
         {() => <ProtectedRoute component={Leaderboard} />}
+      </Route>
+      <Route path="/ar">
+        {() => <ProtectedRoute component={ARView} />}
       </Route>
       <Route path="/challenges">
         {() => <ProtectedRoute component={Challenges} />}
