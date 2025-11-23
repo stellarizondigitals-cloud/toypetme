@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
 import ActionButtons from "@/components/ActionButtons";
@@ -14,8 +15,11 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Pet, User } from "@shared/schema";
 import { formatCurrency, formatCoinReward } from "@/lib/currency";
 import { DAILY_LOGIN_BONUS, PET_ACTIONS } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { Globe } from "lucide-react";
 
 export default function GameHome() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [evolutionState, setEvolutionState] = useState<{
     isOpen: boolean;
@@ -325,6 +329,17 @@ export default function GameHome() {
           onSleep={() => sleepMutation.mutate()}
           isLoading={feedMutation.isPending || playMutation.isPending || cleanMutation.isPending || sleepMutation.isPending}
         />
+        
+        {/* AR Pet View Button */}
+        <Button
+          onClick={() => setLocation("/ar")}
+          size="lg"
+          className="w-full bg-gradient-to-r from-blue-400 to-purple-500 hover:from-blue-500 hover:to-purple-600"
+          data-testid="button-ar-view"
+        >
+          <Globe className="mr-2 w-4 h-4" />
+          View Pet in AR 🌍
+        </Button>
         
         <QuickActions />
         

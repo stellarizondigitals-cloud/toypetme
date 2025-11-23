@@ -1,0 +1,185 @@
+You are a senior full‑stack architect helping me audit and optimize costs for my Replit project.
+
+**Project / Product Context**
+
+- Product Name: ToyPetMe
+- Product Type: Web + Mobile virtual pet game (Tamagotchi‑style).
+- Domain: toypetme.com
+- Goal: Users can adopt, feed, play with, and care for a virtual pet via web and (eventually) mobile app.
+
+**Your Job**
+
+1. **Fully analyze the existing Replit project**
+2. **Explain the current composition and components in detail**
+3. **Recommend a cheaper architecture based on free / very low‑cost tiers**
+4. **Give me a clear, step‑by‑step plan to move from the current setup to the cheaper one**
+
+---
+
+## 1. Analyze the current project (web + backend + hosting)
+
+Look through ALL relevant files in this repl, including but not limited to:
+
+- Project config:
+  - `replit.nix`, `.replit`, `package.json`, `requirements.txt`, `pyproject.toml`, `Dockerfile`, `Procfile`, or any CI/CD config.
+- Frontend:
+  - Source dirs like `src/`, `app/`, `pages/`, `public/`, `components/`, `static/`, etc.
+  - Framework usage: React, Next.js, Vue, Svelte, plain HTML/CSS/JS, etc.
+- Backend:
+  - Server code (`index.js`, `server.js`, `app.py`, `main.go`, etc.).
+  - Any API routes or GraphQL resolvers.
+- Database / storage:
+  - Any database clients (e.g. MongoDB, Postgres, Supabase, Firebase, Prisma/ORMs).
+  - Any filesystem or object storage usage.
+- Auth:
+  - Login/signup flows.
+  - Usage of third‑party auth (Firebase Auth, Auth0, Supabase Auth, etc.).
+- External services:
+  - Any APIs called (payment, analytics, 3rd‑party content).
+- Environment:
+  - `.env`, `.env.example`, or environment variable references (DO NOT print actual secrets; just describe their purpose).
+
+### 1A. Output: Current architecture overview
+
+Produce a structured report with:
+
+1. **High-level diagram (in text) of the current architecture**, e.g.:
+
+   - Frontend:
+     - Tech stack (e.g. React SPA, Next.js SSR, etc.).
+     - Where it’s served from (Replit web server, static build, etc.).
+   - Backend:
+     - Language and framework (Node/Express, Python/FastAPI, etc.).
+     - Endpoints and their responsibilities (e.g. `/api/pet`, `/api/user`, etc.).
+   - Database:
+     - Which DB/storage is used (Mongo, Postgres, Firebase, etc.).
+     - Rough description of main collections/tables (Pets, Users, Sessions, etc.).
+   - Auth:
+     - How users sign up / log in (email/password, OAuth, anonymous, none).
+   - Hosting:
+     - How the app is currently run/deployed on Replit (always‑on? web server?).
+
+2. **File‑level breakdown**:
+   - List the most important files and directories and what they do.
+   - Example:
+     - `src/components/PetStatus.tsx` – shows hunger/happiness stats.
+     - `server/api/pet.ts` – exposes CRUD endpoints for pets.
+
+3. **Dependencies and cost exposure**:
+   - Read `package.json`, `requirements.txt`, etc.
+   - Categorize dependencies:
+     - Framework/core libs.
+     - UI libraries.
+     - DB/ORM clients.
+     - Analytics/payments.
+     - Anything usage‑billed or likely to cost money over time.
+   - For each external service (DB, auth, analytics, etc.):
+     - Name it.
+     - Briefly explain what it’s used for.
+     - Note whether it typically has a **free tier** and any obvious cost risks.
+
+4. **Unknowns**:
+   - Explicitly list any areas where you *cannot* be sure (e.g., hosting outside Replit, external DB not configured in this repl).
+   - Give suggestions on what I should check manually (e.g. “check your Mongo Atlas dashboard” or “check your Vercel project for this repo”).
+
+---
+
+## 2. Recommend a cheaper/free‑tier architecture
+
+Based on the current ToyPetMe setup and the fact that Replit is expensive for me, propose a new architecture using **cheap or free tiers**, such as:
+
+- **Frontend / Web:**
+  - Next.js or pure React with:
+    - Hosting on Vercel, Netlify, or Cloudflare Pages (pick ONE).
+- **Backend / API:**
+  - Option A: Serverless functions attached to the frontend host (e.g. Vercel Functions).
+  - Option B: A small Node/FastAPI backend on Render/Fly.io (only if truly necessary).
+- **Database / Auth:**
+  - Supabase (Postgres + Auth + Storage) OR Firebase (Firestore + Auth), pick ONE direction and justify.
+- **Static assets:**
+  - Hosted via the same frontend platform (Vercel/Netlify) or via Supabase/Firebase storage.
+
+### 2A. Output: Target architecture
+
+Describe in detail:
+
+1. **Recommended target stack** (choose concrete options, don’t just list possibilities):
+   - Example:
+     - “Next.js + Vercel for hosting + API routes”
+     - “Supabase for DB + Auth”
+2. **How ToyPetMe’s features map to this stack**:
+   - Storing pet state (hunger, happiness, XP, etc.).
+   - Storing user accounts and their pets.
+   - Serving the game UI (web).
+   - Later: exposing APIs for a mobile app client.
+
+3. **Why this stack is cheaper / better**:
+   - Use bullet points:
+     - Free tier details (roughly).
+     - Autoscaling / no always‑on container.
+     - Less infrastructure to manage.
+
+---
+
+## 3. Migration / change plan (step‑by‑step)
+
+Now provide a **concrete, ordered migration plan** to move from the current Replit setup to the recommended cheap/free architecture.
+
+Structure it as phases:
+
+### Phase 0 – Export & backup
+
+- How to:
+  - Export the current Replit project to GitHub or a local machine.
+  - Preserve `.env` values without leaking secrets.
+
+### Phase 1 – Frontend separation & deployment
+
+- Steps to:
+  - Identify the frontend part of the codebase.
+  - If it’s not already in a framework like Next.js, detail how to:
+    - Create a new Next.js app.
+    - Move React components / static assets into it.
+  - Configure environment variables for the new host.
+  - Deploy the frontend to the chosen platform (e.g. Vercel or Netlify) with:
+    - Build commands.
+    - Output directory.
+  - Point `toypetme.com` to the new deployment (high‑level DNS steps, no provider‑specific magic).
+
+### Phase 2 – Backend / database migration
+
+- For each current backend concern (auth, pet state, user data, etc.):
+  1. Describe what it does *today*.
+  2. Describe where it will live in the new stack:
+     - Supabase tables (with example schema),
+     - or Firebase collections,
+     - and/or API routes.
+  3. Give example code:
+     - Supabase/Firebase initialization.
+     - One or two key operations (e.g. “get current pet state”, “update pet stats after feeding”).
+
+- If applicable:
+  - Show how to convert any in‑memory or file‑based storage to proper DB tables.
+  - Show how to migrate from an existing external DB if one is used.
+
+### Phase 3 – Decommissioning Replit
+
+- Once the new stack is live and stable:
+  - Explain how to:
+    - Stop relying on Replit hosting.
+    - Keep the code on GitHub or your local dev environment.
+    - Use Replit only in free mode (if at all) as a sandbox, OR not at all.
+
+---
+
+## 4. Developer‑friendly summary
+
+Finally, provide:
+
+- A short “Executive Summary” (5–10 bullet points) that explains:
+  - What the current stack is.
+  - The biggest cost or complexity issues.
+  - The proposed new stack.
+  - The high‑level migration path.
+
+Be explicit, avoid hand‑wavy statements, and when you are unsure about something, mark it as an assumption and say what I should verify.
