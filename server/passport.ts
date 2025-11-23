@@ -5,7 +5,9 @@ import type { User } from "@shared/schema";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5000";
+// Use explicit callback URL from env, or construct from FRONTEND_URL
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 
+  `${process.env.FRONTEND_URL || "http://localhost:5000"}/api/auth/google/callback`;
 
 export function setupPassport() {
   passport.serializeUser((user: any, done) => {
@@ -27,7 +29,7 @@ export function setupPassport() {
         {
           clientID: GOOGLE_CLIENT_ID,
           clientSecret: GOOGLE_CLIENT_SECRET,
-          callbackURL: `${FRONTEND_URL}/api/auth/google/callback`,
+          callbackURL: GOOGLE_CALLBACK_URL,
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
@@ -61,10 +63,8 @@ export function setupPassport() {
             user = await storage.createUser(uniqueUsername, email, null, "google");
             await storage.markEmailVerified(user.id);
             
-            await storage.createPet({
-              userId: user.id,
-              name: "Fluffy",
-            });
+            // Don't create pet here - let tutorial handle it
+            // User will see tutorial screen to select their starter pet
 
             return done(null, user);
           } catch (error) {
