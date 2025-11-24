@@ -5,9 +5,6 @@ import type { User } from "@shared/schema";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-// Use explicit callback URL from env, or construct from FRONTEND_URL
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 
-  `${process.env.FRONTEND_URL || "http://localhost:5000"}/api/auth/google/callback`;
 
 export function setupPassport() {
   passport.serializeUser((user: any, done) => {
@@ -29,9 +26,9 @@ export function setupPassport() {
         {
           clientID: GOOGLE_CLIENT_ID,
           clientSecret: GOOGLE_CLIENT_SECRET,
-          callbackURL: GOOGLE_CALLBACK_URL,
+          callbackURL: "http://localhost:5000/api/auth/google/callback",
         },
-        async (accessToken, refreshToken, profile, done) => {
+        async (accessToken: string, refreshToken: string, profile: any, done: any) => {
           try {
             const email = profile.emails?.[0]?.value;
             

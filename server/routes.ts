@@ -364,7 +364,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       return res.status(503).json({ error: "Google OAuth is not configured" });
     }
-    passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    
+    // Set dynamic callback URL based on current host (works in dev + production)
+    const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const host = req.get('host');
+    const callbackUrl = `${protocol}://${host}/api/auth/google/callback`;
+    
+    passport.authenticate("google", { 
+      scope: ["profile", "email"],
+      state: callbackUrl // Pass callback URL as state
+    })(req, res, next);
   });
 
   // Google OAuth - Callback
