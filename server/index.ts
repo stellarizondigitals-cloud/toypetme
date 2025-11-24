@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import memorystore from "memorystore";
+import pgSession from "connect-pg-simple";
 import passport from "passport";
 import { setupPassport } from "./passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { neon } from "@neondatabase/serverless";
 
 const app = express();
 
@@ -32,7 +34,26 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-const MemoryStore = memorystore(session);
+// Determine session store based on environment
+const getSessionStore = () => {
+  // In production, use PostgreSQL for persistent sessions
+  if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
+    const PgSession = pgSession(session);
+    const sql = neon(process.env.DATABASE_URL);
+    return new PgSession({
+      pool: sql as any,
+      createTableIfMissing: true,
+    });
+  }
+  
+  // In development, use in-memory store (faster, sessions lost on restart)
+  const MemoryStore = memorystore(session);
+  return new MemoryStore({
+    checkPeriod: 86400000,
+  });
+};
+
+const sessionStore = getSessionStore();
 
 app.use(
   session({
@@ -42,9 +63,7 @@ app.use(
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax'
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000,
-    }),
+    store: sessionStore,
     resave: false,
     secret: process.env.SESSION_SECRET || "toypetme-secret-key-change-in-production",
     saveUninitialized: false,
