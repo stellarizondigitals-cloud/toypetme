@@ -1,0 +1,77 @@
+Perfect! ✅ Created vercel.json at the project root. Here's what each key does:
+
+📋 vercel.json Explained
+"version": 2
+Specifies Vercel platform version
+Version 2 supports modern features (rewrites, serverless functions, etc.)
+Required for all new Vercel projects
+"buildCommand": "npm run build"
+Tells Vercel how to build your app
+Runs: vite build && esbuild server/index.ts ...
+Output: Frontend (dist/public/) + Backend (dist/index.js)
+"outputDirectory": "dist/public"
+Directory containing static files to serve
+Vercel uploads this to CDN/edge network
+Contains: HTML, CSS, JS, images from your React frontend
+"framework": null
+null = No framework detection (custom setup)
+Set to null because you're using custom Express.js (not Next.js/etc.)
+Vercel won't auto-configure; it uses your build command instead
+"rewrites" (URL routing)
+These intercept requests and route them properly:
+
+First rewrite:
+
+{
+  "source": "/api/(.*)",
+  "destination": "/api/index.js"
+}
+
+Any request to /api/* → routed to your Express backend (dist/index.js)
+Example: /api/auth/signup → handled by backend API routes
+Second rewrite:
+
+{
+  "source": "/(.*)",
+  "destination": "/index.html"
+}
+
+Any other request → serves index.html (React frontend)
+Enables client-side routing (Wouter handles routes in React)
+Example: / → /index.html → React app renders appropriate page
+"functions" (Serverless config)
+{
+  "api/index.js": {
+    "runtime": "nodejs18.x",
+    "maxDuration": 10
+  }
+}
+
+"api/index.js" - Path to your backend bundle
+"runtime": "nodejs18.x" - Node.js version (18.x for modern features)
+"maxDuration": 10 - Function timeout: 10 seconds max
+Free tier limit: 10 seconds
+Pro tier allows up to 60 seconds
+Your API routes must complete within 10 seconds
+🔄 How It Works Together
+Request to https://toypetme.vercel.app:
+  │
+  ├─ /api/pets → Rewrite to api/index.js → Express backend handles
+  │
+  ├─ /game/memory → Rewrite to index.html → React renders game page
+  │
+  └─ / → Rewrite to index.html → React renders home page
+
+✅ Your Vercel Config is Ready!
+With this vercel.json:
+
+✅ Frontend (React) serves static files from CDN (fast)
+✅ Backend (Express API) runs as serverless function (scalable)
+✅ Routing works: /api/* → backend, everything else → frontend
+✅ 10-second timeout is plenty for your pet actions & database queries
+✅ 100% free-tier compatible
+Next step: Push to GitHub and deploy to Vercel! 🚀
+
+Checkpoint made
+just now
+Add Vercel configuration file for deployment

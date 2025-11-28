@@ -3,8 +3,19 @@
 ## Overview
 ToyPetMe is a mobile-first virtual pet game, inspired by Tamagotchi and idle games, delivered as a full-stack web application. Users care for 20 unique virtual pets, each with distinct personalities and evolution paths, through activities like feeding, playing, cleaning, and rest. The game features a stat-based progression system, mini-games, a comprehensive currency system, stat decay mechanics, and rewards. It aims to provide a delightful, stress-free experience with account creation required to save pet progress and manage multiple pets. Key features include a global leaderboard, pet collection showcase, social sharing, and an in-app store with premium benefits.
 
+## Deployment Status
+**🚀 PRODUCTION READY - 100% FREE TIER**
+- ✅ Removed Neon dependency (switched to generic PostgreSQL)
+- ✅ Database: Supabase PostgreSQL (free tier: 500MB)
+- ✅ Built successfully: `npm run build` → dist/ (1.4 MB total)
+- ✅ Vercel config: vercel.json created and configured
+- ✅ Session storage: PostgreSQL (persistent)
+- ✅ Ready to deploy to Vercel Hobby (free)
+- **Cost: $0/month** (Replit dev + GitHub + Vercel + Supabase all free)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Strict requirement: 100% free-tier infrastructure (no paid hosting, databases, or services)
 
 ## System Architecture
 
