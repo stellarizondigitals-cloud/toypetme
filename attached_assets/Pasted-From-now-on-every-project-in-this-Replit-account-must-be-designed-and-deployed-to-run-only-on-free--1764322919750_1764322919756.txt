@@ -1,0 +1,26 @@
+From now on, every project in this Replit account must be designed and deployed to run only on free tiers of all services used.
+Hard requirements (must always be true):
+Hosting
+Use only hosting providers that have a free tier (e.g. Replit free deployments, Vercel Hobby, Netlify free tier, GitHub Pages, Railway free tier, Render free tier, Supabase free tier, etc.).
+All frontend sites (marketing pages, simple apps) should prefer static hosting on a free plan where possible.
+No paid hosting plans, no usage that will automatically upgrade to a paid tier.
+Databases and Storage
+Use only databases and storage with a clearly documented free tier (e.g. Supabase free tier ).
+The project must be configured so that normal expected usage stays within free-tier limits (rows, bandwidth, read/write ops, storage size).
+Avoid features that require paid add‑ons (e.g. dedicated instances, paid backups, paid analytics).
+APIs & Third‑Party Services
+Only integrate APIs/services that offer free plans or generous free quotas (e.g. basic email services, simple auth, free‑tier analytics).
+Disable or avoid features that would require entering a credit card or upgrading to a paid plan.
+If an external API requires a key, it must have a free usage level sufficient for expected traffic.
+Background Jobs & Server Resources
+Design apps to work within the limits of free tiers:
+Minimal always‑on servers (use serverless / edge functions where possible).
+Avoid heavy CPU, GPU, or very long‑running tasks that would trigger paid usage.
+Prefer static generation or on‑demand serverless over constantly running processes.
+Environment & Config
+Document in the README exactly which free‑tier services are used and provide setup steps that do not require any paid upgrades.
+If a paid tier is ever absolutely necessary for a specific feature, that feature must be clearly marked as optional and disabled by default.
+Cost Safety
+Assume projects may run unattended; they must be safe from surprise charges.
+No auto‑scaling or auto‑upgrade settings that can move the project off a free plan.
+Goal: Every app and website in this Replit workspace should be deployable and usable in production‑like conditions without any recurring hosting or infrastructure cost, staying strictly within the free tiers of the chosen providers.

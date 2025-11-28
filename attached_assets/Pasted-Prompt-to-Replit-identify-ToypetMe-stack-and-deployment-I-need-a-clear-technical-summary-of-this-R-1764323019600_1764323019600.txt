@@ -1,0 +1,27 @@
+Prompt to Replit: identify ToypetMe stack and deployment
+I need a clear technical summary of this Replit project so I can migrate it and make sure it stays on free tiers only.
+Please inspect the project files and answer the following questions in detail:
+Frontend stack
+Is the app using pure HTML/CSS/JavaScript, React, Next.js, Vue, Svelte, or something else?
+Which framework/library is the main entry point (e.g., src/main.tsx, src/App.tsx, pages/index.tsx)?
+Backend / server stack
+Is there a custom Node.js backend (e.g., Express, Fastify, Nest, tRPC) or is it a frontend‑only app?
+List any server files you find (for example server/index.ts, server.ts, api/*.ts, or routes/*.ts) and say what they do.
+Build system & tooling
+Which build tool is used (Vite, Webpack, Next.js built‑in, CRA, etc.)?
+Show the full "scripts" section from package.json and briefly explain what each script does (dev, build, start, prod, etc.).
+Databases & external services
+Which databases or storage services are referenced (e.g., Supabase, Firebase, PostgreSQL, MongoDB, Redis)?
+List any API services or SDKs used (e.g., Google Gemini, Stripe, email providers).
+For each one, tell me whether it can run on a free tier and what its typical free limits are (if known).
+Current deployment assumptions
+Based on the code and scripts, what deployment environment does this project appear to target (Replit Reserved VM, Vercel, Netlify, static hosting, etc.)?
+Which commands are intended to run in production (for example npm run prod vs npm run start)?
+Does the app expect a long‑running server process or can it run as a static / serverless site?
+Ports, environment variables, and secrets
+What port does the server listen on by default?
+List all environment variables (process.env.*) used in the code and explain what each is for (especially API keys such as Google Gemini).
+Free‑tier suitability
+Given everything above, explain whether this project can be hosted fully on free tiers (for both frontend and backend).
+If any part clearly requires a paid VM (e.g., Replit Reserved VM), highlight it and suggest how it could be restructured to work on free hosting (for example, static frontend + serverless API + free database).
+Please format the answer as a structured report with numbered headings 1–7 so I can quickly see the full stack and deployment requirements for ToypetMe.com.
