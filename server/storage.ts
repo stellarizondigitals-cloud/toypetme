@@ -30,6 +30,8 @@ import {
   BREEDING_DURATION_HOURS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { eq, and, desc, sql as sqlOp, count, max, gte, lt } from "drizzle-orm";
 import { users, pets, shopItems, inventory, challenges, userChallenges, breedingRecords, eggs, miniGames, userMiniGameSessions, calculateLevelAndEvolution, MINI_GAMES } from "@shared/schema";
 import { inheritTraits, generateBabyName, generateRandomTraits } from "./genetics";
@@ -1167,13 +1169,14 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database Storage Implementation
+// Database Storage Implementation (PostgreSQL/Supabase)
 export class DbStorage implements IStorage {
   private db;
 
   constructor() {
     const connectionString = process.env.DATABASE_URL!;
-    const sql = neon(connectionString);
+    // Use generic postgres client (works with Supabase, Railway, etc.)
+    const sql = postgres(connectionString);
     this.db = drizzle(sql);
     this.initializeShopItems();
     this.initializeChallenges();

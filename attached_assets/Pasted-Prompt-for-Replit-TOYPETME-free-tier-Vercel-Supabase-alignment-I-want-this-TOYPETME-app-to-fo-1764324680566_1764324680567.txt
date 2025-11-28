@@ -1,0 +1,65 @@
+Prompt for Replit (TOYPETME free‑tier + Vercel + Supabase alignment)
+
+I want this TOYPETME app to follow the exact same free‑tier architecture as my Cosmic Daily app:
+
+Dev: Replit (free, no hosting)
+Code: GitHub (free)
+Hosting: Vercel Hobby (free) – static frontend + serverless API
+Database: Supabase Postgres free tier (or MemStorage fallback in dev)
+Email: Resend or Brevo free tier
+AI: (none yet, but if added later, it will be Gemini free tier)
+You already started a free‑tier migration and partially added MemStorage. Please finish and align everything with this architecture:
+
+1. Storage layer: MemStorage + Supabase‑ready DbStorage
+Open server/storage.ts (or equivalent).
+Ensure there are no imports from Neon or @neondatabase/ anywhere in the repo.
+Make DbStorage use a generic Postgres client + Drizzle, driven only by process.env.DATABASE_URL. It must work with a Supabase Session Pooler URI:
+Format like:
+postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-1-[REGION].pooler.supabase.com:5432/postgres
+If DATABASE_URL is missing or invalid, do not construct DbStorage. Instead:
+Log a clear warning:
+"DATABASE_URL not set – using in-memory MemStorage (no persistence)."
+Use MemStorage as the active storage backend so the app still runs on Replit free tier with no external DB.
+2. Backend entry point / server
+Open server/index.ts (or the main server file).
+Ensure storage initialization follows this logic:
+If process.env.DATABASE_URL exists → use DbStorage.
+Else → use MemStorage and in‑memory session store.
+Confirm the server can run on port 5000 in dev and that nothing depends on Replit Reserved VMs or Replit Database.
+3. Drizzle + Supabase configuration
+Open drizzle.config.*.
+Make sure:
+It only uses a generic DATABASE_URL (no hard‑coded Neon hostnames).
+It’s ready to run migrations against Supabase later with a command like npm run db:push.
+In your summary, tell me:
+Which CLI command I should use to push the schema to Supabase.
+Which env vars must be set before running it.
+4. Environment variables audit (dev vs prod)
+List all env vars used by the app and classify them:
+Dev (Replit, MemStorage allowed):
+EMAIL_API_KEY, FRONTEND_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, JWT_SECRET, NODE_ENV, PORT, optional DATABASE_URL.
+Prod (Vercel + Supabase):
+Same as above but DATABASE_URL is required and points to Supabase.
+Ensure the backend does not crash if DATABASE_URL is missing; it must fall back to MemStorage.
+5. Vercel alignment
+Check the project structure and confirm:
+Frontend builds with Vite (npm run build) and outputs to dist.
+Backend routes are organized so they can be moved to Vercel serverless functions (e.g. under /api) or are otherwise easy to map to Vercel.
+In your summary, provide:
+The build command and output directory I should configure in Vercel.
+The list of env vars that must be set in Vercel (Production) for this app to run with Supabase.
+6. Documentation
+Create or update a small markdown file (e.g. FREE_TIER_SETUP_TOYPETME.md) that explains:
+How to run on Replit with MemStorage only (no database, fully free).
+How to plug in Supabase by setting DATABASE_URL and running the Drizzle migration command.
+How to deploy to Vercel (build command, output dir, required env vars).
+Finally, summarize for me:
+
+Which files you changed.
+Exactly how the app behaves:
+When DATABASE_URL is unset (MemStorage mode).
+When DATABASE_URL is set to a Supabase URI (persistent DB mode).
+The exact checklist I should follow to:
+set up Supabase for TOYPETME,
+run migrations, and
+deploy to Vercel on the free tier.
