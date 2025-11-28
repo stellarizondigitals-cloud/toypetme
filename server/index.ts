@@ -6,7 +6,7 @@ import passport from "passport";
 import { setupPassport } from "./passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 const app = express();
 
@@ -36,17 +36,24 @@ if (process.env.NODE_ENV === 'production') {
 
 // Determine session store based on environment
 const getSessionStore = () => {
-  // In production, use PostgreSQL for persistent sessions
+  // In production with DATABASE_URL, use PostgreSQL for persistent sessions
   if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
-    const PgSession = pgSession(session);
-    const sql = neon(process.env.DATABASE_URL);
-    return new PgSession({
-      pool: sql as any,
-      createTableIfMissing: true,
-    });
+    try {
+      const PgSession = pgSession(session);
+      const sql = postgres(process.env.DATABASE_URL);
+      console.log("✅ Session store: PostgreSQL (persistent across restarts)");
+      return new PgSession({
+        pool: sql as any,
+        createTableIfMissing: true,
+      });
+    } catch (error) {
+      console.warn("⚠️ PostgreSQL session store failed, falling back to memory");
+      console.warn("Error:", error instanceof Error ? error.message : String(error));
+    }
   }
   
-  // In development, use in-memory store (faster, sessions lost on restart)
+  // Fallback to in-memory store (development, or if DB is unavailable)
+  console.log("ℹ️ Session store: Memory (sessions lost on server restart)");
   const MemoryStore = memorystore(session);
   return new MemoryStore({
     checkPeriod: 86400000,

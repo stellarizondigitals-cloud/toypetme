@@ -1,0 +1,67 @@
+I have a strict rule:
+This app must run 100% on free tiers only (no Neon, no paid databases, no paid hosting).
+The tech stack you discovered is:
+
+Frontend: React 18 + TypeScript, Vite, Wouter, Radix UI + shadcn
+Backend: Express.js + Node.js, Drizzle ORM, Passport.js (Google OAuth + local)
+Database: Neon PostgreSQL (❌ must be removed)
+External services: Resend (email), Google OAuth
+Ports: 5000 (frontend + backend)
+Env vars: DATABASE_URL, EMAIL_API_KEY, FRONTEND_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET, JWT_SECRET, NODE_ENV, PORT
+Please update this project to be fully free‑tier compliant, following these steps:
+
+Remove Neon and make DB optional
+Find all places using Neon or a Neon‑specific DATABASE_URL (e.g. db clients, Drizzle config, connection helpers).
+Replace Neon with a generic Postgres client setup (using pg and Drizzle), so it can work with Supabase Postgres.
+For now, add a safe fallback MemStorage implementation:
+If DATABASE_URL is missing or invalid, use an in‑memory storage backend (MemStorage) instead of DbStorage.
+Make sure server/routes.ts (and anywhere else) can switch between DbStorage and MemStorage without errors.
+Document clearly in comments and in a short FREE_TIER.md which storage is used in which situation.
+Prepare for Supabase as the permanent database
+Adjust the Drizzle config so that:
+It only depends on a generic DATABASE_URL that will point to Supabase later.
+There are no hard‑coded Neon hostnames anywhere.
+Confirm that the current schema works on Supabase (standard Postgres).
+Output the exact DATABASE_URL format I should use from Supabase (Session Pooler URI), similar to:
+postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-1-[REGION].pooler.supabase.com:5432/postgres
+Provide the exact command I should run later to push the schema to Supabase (for example npm run db:push), and verify that the config files are ready for this.
+Free‑tier friendly backend & hosting
+Ensure the app can run on port 5000 in development only (Replit).
+Prepare the backend so it can be deployed as serverless functions on Vercel, or at least so that:
+Static frontend is built with Vite (e.g. npm run build).
+API can be hosted on Vercel or as edge/serverless functions later without needing a long‑running server or paid VM.
+Make sure there is no dependency on Replit Reserved VM, Replit Postgres, or any paid Replit hosting feature. Dev only.
+External services: enforce free‑tier usage
+Resend:
+Confirm the code uses only basic transactional email features compatible with the Resend free tier (100 emails/day).
+Make the API key read from EMAIL_API_KEY and document this in a short text file.
+Google OAuth:
+Confirm it uses standard free Google OAuth flows.
+Ensure redirect URLs can be configured via env vars (FRONTEND_URL etc.) for local dev and Vercel.
+Environment variable audit
+List all environment variables this app needs, and mark which are required for:
+Local dev on Replit (with MemStorage).
+Production on Vercel (with Supabase).
+The key env vars should be:
+DATABASE_URL (Postgres / Supabase, optional in dev if MemStorage is used)
+EMAIL_API_KEY (Resend)
+FRONTEND_URL
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+SESSION_SECRET
+JWT_SECRET
+NODE_ENV
+PORT
+Make sure the backend does not crash if DATABASE_URL is missing; instead it should fall back to MemStorage and log a clear warning.
+Documentation + checklist
+Create or update a small markdown file (e.g. FREE_TIER_SETUP.md) that explains:
+How to run the app on Replit free tier with MemStorage (no external DB).
+How to connect a Supabase Postgres instance later by setting DATABASE_URL and running the Drizzle migration command.
+How to deploy the frontend to Vercel free tier (build command, output directory).
+Which external services are used and that they are on free tiers (Resend, Google OAuth).
+At the end of your response, summarize:
+Which files you changed.
+How the app behaves if DATABASE_URL is unset.
+How I should later plug in Supabase while still keeping everything on free tiers.
+Please make all changes with the single goal of:
+TOYPETME.com must be 100% free‑tier compatible: no Neon, no paid databases, no paid hosting.

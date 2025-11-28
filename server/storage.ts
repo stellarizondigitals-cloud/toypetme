@@ -30,8 +30,6 @@ import {
   BREEDING_DURATION_HOURS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { eq, and, desc, sql as sqlOp, count, max, gte, lt } from "drizzle-orm";
 import { users, pets, shopItems, inventory, challenges, userChallenges, breedingRecords, eggs, miniGames, userMiniGameSessions, calculateLevelAndEvolution, MINI_GAMES } from "@shared/schema";
 import { inheritTraits, generateBabyName, generateRandomTraits } from "./genetics";
@@ -2418,5 +2416,24 @@ export class DbStorage implements IStorage {
   }
 }
 
-// Use database storage for persistence across restarts
-export const storage = new DbStorage();
+// Initialize storage with graceful fallback
+// - If DATABASE_URL is available and valid, use DbStorage (Supabase/PostgreSQL)
+// - Otherwise, use MemStorage (in-memory, for development/free tier)
+let storage: IStorage;
+
+if (process.env.DATABASE_URL) {
+  try {
+    storage = new DbStorage();
+    console.log("✅ Database storage initialized (PostgreSQL/Supabase)");
+  } catch (error) {
+    console.warn("⚠️ Database connection failed, falling back to memory storage");
+    console.warn("Error:", error instanceof Error ? error.message : String(error));
+    storage = new MemStorage();
+  }
+} else {
+  console.warn("⚠️ DATABASE_URL not set. Using in-memory storage (MemStorage).");
+  console.warn("   To use persistent storage, set DATABASE_URL to a PostgreSQL/Supabase connection string.");
+  storage = new MemStorage();
+}
+
+export { storage };
