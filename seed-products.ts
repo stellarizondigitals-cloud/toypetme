@@ -24,7 +24,7 @@ async function seedProducts() {
 
   const coinPrice1 = await stripe.prices.create({
     product: coinPack1.id,
-    unit_amount: 299, // $2.99
+    unit_amount: 99, // $0.99
     currency: 'usd',
     metadata: {
       coins: '500',
@@ -42,7 +42,7 @@ async function seedProducts() {
 
   const coinPrice2 = await stripe.prices.create({
     product: coinPack2.id,
-    unit_amount: 699, // $6.99
+    unit_amount: 199, // $1.99
     currency: 'usd',
     metadata: {
       coins: '1500',
@@ -60,7 +60,7 @@ async function seedProducts() {
 
   const premiumPrice = await stripe.prices.create({
     product: premiumProduct.id,
-    unit_amount: 999, // $9.99
+    unit_amount: 499, // $4.99
     currency: 'usd',
     recurring: {
       interval: 'month',
