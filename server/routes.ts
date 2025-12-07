@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import passport from "passport";
 import { generateJWT, generateRefreshToken, verifyRefreshToken } from "./jwt";
 import { z } from "zod";
+import { stripeService } from "./stripeService";
 
 // Helper to evaluate cooldown status
 function evaluateCooldown(lastActionTime: Date | null, cooldownMinutes: number): { ready: boolean; remainingSeconds: number } {
@@ -1406,6 +1407,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Play mini-game error:", error);
       res.status(500).json({ error: error.message || "Failed to play mini-game" });
+    }
+  });
+
+  // ===== STRIPE PAYMENT ROUTES =====
+  
+  // Get available products/prices
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const products = await stripeService.listProductsWithPrices();
+      res.json({ products });
+    } catch (error: any) {
+      console.error("Stripe products error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch products" });
+    }
+  });
+
+  // Create checkout session
+  app.post("/api/stripe/checkout", requireAuth, async (req: any, res) => {
+    try {
+      const { priceId } = req.body;
+      if (!priceId) {
+        return res.status(400).json({ error: "Missing priceId" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const session = await stripeService.createCheckoutSession(
+        user.id, // Use user ID as customer reference
+        priceId,
+        `${req.protocol}://${req.get('host')}/store?success=true`,
+        `${req.protocol}://${req.get('host')}/store?canceled=true`
+      );
+
+      res.json({ checkoutUrl: session.url });
+    } catch (error: any) {
+      console.error("Stripe checkout error:", error);
+      res.status(500).json({ error: error.message || "Failed to create checkout session" });
     }
   });
 

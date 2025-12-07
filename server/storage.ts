@@ -122,6 +122,9 @@ export interface IStorage {
   hatchEgg(userId: string, eggId: string): Promise<{ egg: Egg; pet: Pet }>;
   getUserEggs(userId: string): Promise<Egg[]>;
 
+  // Stripe
+  addStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User>;
+  
   // Mini-games
   getMiniGames(): Promise<MiniGame[]>;
   getUserMiniGameSessions(userId: string, gameId?: string): Promise<UserMiniGameSession[]>;
@@ -292,6 +295,12 @@ export class MemStorage implements IStorage {
     if (!user) throw new Error("User not found");
     user.premium = !user.premium;
     this.users.set(userId, user);
+    return user;
+  }
+
+  async addStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
     return user;
   }
 
@@ -1393,6 +1402,13 @@ export class DbStorage implements IStorage {
     return this.verifyUser(userId);
   }
 
+  async addStripeCustomerId(userId: string, stripeCustomerId: string): Promise<User> {
+    const result = await this.db.execute(
+      sqlOp`UPDATE users SET metadata = jsonb_build_object('stripeCustomerId', ${stripeCustomerId}) WHERE id = ${userId} RETURNING *`
+    );
+    return result.rows[0] as User;
+  }
+
   async togglePremium(userId: string): Promise<User> {
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
@@ -2416,6 +2432,43 @@ export class DbStorage implements IStorage {
       .returning();
     
     return newSession;
+  }
+
+  // Stripe queries
+  async getProduct(productId: string) {
+    const result = await this.db.execute(
+      sqlOp`SELECT * FROM stripe.products WHERE id = ${productId}`
+    );
+    return result.rows[0] || null;
+  }
+
+  async listProducts(active = true, limit = 20) {
+    const result = await this.db.execute(
+      sqlOp`SELECT * FROM stripe.products WHERE active = ${active} ORDER BY id LIMIT ${limit}`
+    );
+    return result.rows;
+  }
+
+  async listProductsWithPrices(active = true, limit = 20) {
+    const result = await this.db.execute(
+      sqlOp`
+        SELECT 
+          p.id as product_id,
+          p.name,
+          p.description,
+          p.metadata,
+          pr.id as price_id,
+          pr.unit_amount,
+          pr.currency,
+          pr.recurring
+        FROM stripe.products p
+        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = ${active}
+        ORDER BY p.id
+        LIMIT ${limit}
+      `
+    );
+    return result.rows;
   }
 }
 

@@ -47,6 +47,10 @@ localPort = 38623
 externalPort = 8000
 
 [[ports]]
+localPort = 39661
+externalPort = 8080
+
+[[ports]]
 localPort = 40931
 externalPort = 5000
 
@@ -81,3 +85,6 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[agent]
+integrations = ["stripe:2.0.0"]
