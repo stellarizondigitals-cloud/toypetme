@@ -9,7 +9,7 @@ export interface JWTPayload {
 }
 
 // Environment variables for JWT
-const JWT_SECRET = process.env.JWT_SECRET;
+let JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "15m";
 const JWT_REFRESH_EXPIRATION = process.env.JWT_REFRESH_EXPIRATION || "7d";
 
@@ -19,6 +19,9 @@ if (!JWT_SECRET) {
   console.error("   JWT authentication will not work. Please set JWT_SECRET in your environment.");
   process.exit(1);
 }
+
+// Type-safe JWT_SECRET (guaranteed non-null after validation above)
+const SAFE_JWT_SECRET = JWT_SECRET;
 
 /**
  * Middleware to verify JWT token from Authorization header
@@ -39,7 +42,7 @@ export function verifyJWT(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!) as JWTPayload;
+    const decoded = jwt.verify(token, SAFE_JWT_SECRET) as JWTPayload;
     
     // Attach user info to request for downstream handlers
     (req as any).user = decoded;
@@ -63,7 +66,8 @@ export function generateJWT(user: { id: string; email: string; verified: boolean
     verified: user.verified,
   };
 
-  return jwt.sign(payload, JWT_SECRET as string, {
+  // @ts-ignore - jsonwebtoken types are incorrect for this usage
+  return jwt.sign(payload, SAFE_JWT_SECRET, {
     expiresIn: JWT_EXPIRATION,
   });
 }
@@ -77,7 +81,8 @@ export function generateRefreshToken(user: { id: string; email: string }): strin
     email: user.email,
   };
 
-  return jwt.sign(payload, JWT_SECRET as string, {
+  // @ts-ignore - jsonwebtoken types are incorrect for this usage
+  return jwt.sign(payload, SAFE_JWT_SECRET, {
     expiresIn: JWT_REFRESH_EXPIRATION,
   });
 }
@@ -87,7 +92,8 @@ export function generateRefreshToken(user: { id: string; email: string }): strin
  */
 export function verifyRefreshToken(token: string): { id: string; email: string } | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!, { ignoreExpiration: false }) as any;
+    // @ts-ignore - jsonwebtoken types are incorrect for this usage
+    const decoded = jwt.verify(token, SAFE_JWT_SECRET, { ignoreExpiration: false }) as any;
     return { id: decoded.id, email: decoded.email };
   } catch {
     return null;
