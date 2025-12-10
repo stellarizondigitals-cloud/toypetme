@@ -1,13 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
   "builds": [
     {
       "src": "api/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+      "use": "@vercel/node"
     },
     {
       "src": "dist/public/**",
@@ -16,20 +12,13 @@
   ],
   "routes": [
     {
-      "src": "^/api(/.*)?$",
+      "src": "^/api/(.*)$",
       "dest": "/api/index.js"
     },
     {
-      "src": "^/(public|assets)/.*",
-      "dest": "/dist/$0"
-    },
-    {
-      "src": "^/(?!api/|public/|assets/).*\\..*$",
-      "dest": "/dist/public/$0"
-    },
-    {
-      "src": "^/(?!api/).*$",
-      "dest": "/dist/public/index.html"
+      "src": "^/(.*)$",
+      "dest": "/public/index.html"
     }
-  ]
+  ],
+  "buildCommand": "npm run build"
 }
