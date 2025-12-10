@@ -1,0 +1,11 @@
+node_modules
+.git
+.DS_Store
+.env.local
+.env.*.local
+client/dist
+server/dist
+*.log
+.next
+.turbo
+dist
