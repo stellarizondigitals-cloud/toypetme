@@ -818,6 +818,11 @@ var MemStorage = class {
     this.users.set(userId, user);
     return user;
   }
+  async addStripeCustomerId(userId, stripeCustomerId) {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    return user;
+  }
   async watchAdBonus(userId) {
     const user = this.users.get(userId);
     if (!user) throw new Error("User not found");
@@ -1610,6 +1615,12 @@ var DbStorage = class {
   async markEmailVerified(userId) {
     return this.verifyUser(userId);
   }
+  async addStripeCustomerId(userId, stripeCustomerId) {
+    const result = await this.db.execute(
+      sqlOp`UPDATE users SET metadata = jsonb_build_object('stripeCustomerId', ${stripeCustomerId}) WHERE id = ${userId} RETURNING *`
+    );
+    return result.rows[0];
+  }
   async togglePremium(userId) {
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
@@ -2206,6 +2217,40 @@ var DbStorage = class {
     const [newSession] = await this.db.insert(userMiniGameSessions).values(session2).returning();
     return newSession;
   }
+  // Stripe queries
+  async getProduct(productId) {
+    const result = await this.db.execute(
+      sqlOp`SELECT * FROM stripe.products WHERE id = ${productId}`
+    );
+    return result.rows[0] || null;
+  }
+  async listProducts(active = true, limit = 20) {
+    const result = await this.db.execute(
+      sqlOp`SELECT * FROM stripe.products WHERE active = ${active} ORDER BY id LIMIT ${limit}`
+    );
+    return result.rows;
+  }
+  async listProductsWithPrices(active = true, limit = 20) {
+    const result = await this.db.execute(
+      sqlOp`
+        SELECT 
+          p.id as product_id,
+          p.name,
+          p.description,
+          p.metadata,
+          pr.id as price_id,
+          pr.unit_amount,
+          pr.currency,
+          pr.recurring
+        FROM stripe.products p
+        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = ${active}
+        ORDER BY p.id
+        LIMIT ${limit}
+      `
+    );
+    return result.rows;
+  }
 };
 var storage;
 if (process.env.DATABASE_URL) {
@@ -2483,6 +2528,98 @@ function verifyRefreshToken(token) {
 
 // server/routes.ts
 import { z as z2 } from "zod";
+
+// server/stripeClient.ts
+import Stripe from "stripe";
+var connectionSettings;
+async function getCredentials() {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY ? "repl " + process.env.REPL_IDENTITY : process.env.WEB_REPL_RENEWAL ? "depl " + process.env.WEB_REPL_RENEWAL : null;
+  if (!xReplitToken) {
+    throw new Error("X_REPLIT_TOKEN not found for repl/depl");
+  }
+  const connectorName = "stripe";
+  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+  const targetEnvironment = isProduction ? "production" : "development";
+  const url = new URL(`https://${hostname}/api/v2/connection`);
+  url.searchParams.set("include_secrets", "true");
+  url.searchParams.set("connector_names", connectorName);
+  url.searchParams.set("environment", targetEnvironment);
+  const response = await fetch(url.toString(), {
+    headers: {
+      "Accept": "application/json",
+      "X_REPLIT_TOKEN": xReplitToken
+    }
+  });
+  const data = await response.json();
+  connectionSettings = data.items?.[0];
+  if (!connectionSettings || (!connectionSettings.settings.publishable || !connectionSettings.settings.secret)) {
+    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+  }
+  return {
+    publishableKey: connectionSettings.settings.publishable,
+    secretKey: connectionSettings.settings.secret
+  };
+}
+async function getUncachableStripeClient() {
+  const { secretKey } = await getCredentials();
+  return new Stripe(secretKey, {
+    apiVersion: "2025-11-17.clover"
+  });
+}
+async function getStripeSecretKey() {
+  const { secretKey } = await getCredentials();
+  return secretKey;
+}
+var stripeSync = null;
+async function getStripeSync() {
+  if (!stripeSync) {
+    const { StripeSync } = await import("stripe-replit-sync");
+    const secretKey = await getStripeSecretKey();
+    stripeSync = new StripeSync({
+      poolConfig: {
+        connectionString: process.env.DATABASE_URL,
+        max: 2
+      },
+      stripeSecretKey: secretKey
+    });
+  }
+  return stripeSync;
+}
+
+// server/stripeService.ts
+var StripeService = class {
+  async createCustomer(email, userId) {
+    const stripe = await getUncachableStripeClient();
+    return await stripe.customers.create({
+      email,
+      metadata: { userId }
+    });
+  }
+  async createCheckoutSession(customerId, priceId, successUrl, cancelUrl) {
+    const stripe = await getUncachableStripeClient();
+    return await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: "payment",
+      success_url: successUrl,
+      cancel_url: cancelUrl
+    });
+  }
+  async getProduct(productId) {
+    return await storage.getProduct(productId);
+  }
+  async listProducts() {
+    return await storage.listProducts();
+  }
+  async listProductsWithPrices() {
+    return await storage.listProductsWithPrices();
+  }
+};
+var stripeService = new StripeService();
+
+// server/routes.ts
 function evaluateCooldown(lastActionTime, cooldownMinutes) {
   if (!lastActionTime) {
     return { ready: true, remainingSeconds: 0 };
@@ -3521,6 +3658,38 @@ async function registerRoutes(app2) {
       res.status(500).json({ error: error.message || "Failed to play mini-game" });
     }
   });
+  app2.get("/api/stripe/products", async (req, res) => {
+    try {
+      const products = await stripeService.listProductsWithPrices();
+      res.json({ products });
+    } catch (error) {
+      console.error("Stripe products error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch products" });
+    }
+  });
+  app2.post("/api/stripe/checkout", requireAuth, async (req, res) => {
+    try {
+      const { priceId } = req.body;
+      if (!priceId) {
+        return res.status(400).json({ error: "Missing priceId" });
+      }
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const session2 = await stripeService.createCheckoutSession(
+        user.id,
+        // Use user ID as customer reference
+        priceId,
+        `${req.protocol}://${req.get("host")}/store?success=true`,
+        `${req.protocol}://${req.get("host")}/store?canceled=true`
+      );
+      res.json({ checkoutUrl: session2.url });
+    } catch (error) {
+      console.error("Stripe checkout error:", error);
+      res.status(500).json({ error: error.message || "Failed to create checkout session" });
+    }
+  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -3638,12 +3807,52 @@ function serveStatic(app2) {
 
 // server/index.ts
 import postgres2 from "postgres";
+import { runMigrations } from "stripe-replit-sync";
+
+// server/webhookHandlers.ts
+var WebhookHandlers = class {
+  static async processWebhook(payload, signature, uuid) {
+    if (!Buffer.isBuffer(payload)) {
+      throw new Error(
+        "STRIPE WEBHOOK ERROR: Payload must be a Buffer. Received type: " + typeof payload + ". This usually means express.json() parsed the body before reaching this handler. FIX: Ensure webhook route is registered BEFORE app.use(express.json())."
+      );
+    }
+    const sync = await getStripeSync();
+    await sync.processWebhook(payload, signature, uuid);
+  }
+};
+
+// server/index.ts
 var app = express2();
 if (!process.env.SESSION_SECRET) {
   console.error("\u274C CRITICAL: SESSION_SECRET environment variable is not set!");
   console.error("   This is a security risk. Please set SESSION_SECRET in your environment.");
   process.exit(1);
 }
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.warn("\u26A0\uFE0F DATABASE_URL not set - Stripe integration skipped");
+    return;
+  }
+  try {
+    console.log("Initializing Stripe schema...");
+    await runMigrations({ databaseUrl });
+    console.log("\u2705 Stripe schema ready");
+    const stripeSync2 = await getStripeSync();
+    console.log("Setting up managed webhook...");
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "localhost:5000"}`;
+    const { webhook, uuid } = await stripeSync2.findOrCreateManagedWebhook(
+      `${webhookBaseUrl}/api/stripe/webhook`,
+      { enabled_events: ["*"], description: "ToyPetMe Stripe sync webhook" }
+    );
+    console.log(`\u2705 Webhook configured: ${webhook.url}`);
+    stripeSync2.syncBackfill().then(() => console.log("\u2705 Stripe data synced")).catch((err) => console.error("\u26A0\uFE0F Stripe backfill error:", err.message));
+  } catch (error) {
+    console.warn("\u26A0\uFE0F Stripe initialization warning:", error instanceof Error ? error.message : String(error));
+  }
+}
+initStripe();
 app.set("trust proxy", true);
 if (process.env.NODE_ENV === "production") {
   app.use((req, res, next) => {
@@ -3693,6 +3902,29 @@ app.use(
 setupPassport();
 app.use(passport3.initialize());
 app.use(passport3.session());
+app.post(
+  "/api/stripe/webhook/:uuid",
+  express2.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature" });
+    }
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+      const { uuid } = req.params;
+      if (!Buffer.isBuffer(req.body)) {
+        console.error("\u26A0\uFE0F Webhook body is not a Buffer - express.json() may have run first");
+        return res.status(500).json({ error: "Webhook processing error" });
+      }
+      await WebhookHandlers.processWebhook(req.body, sig, uuid);
+      res.status(200).json({ received: true });
+    } catch (error) {
+      console.error("Webhook error:", error.message);
+      res.status(400).json({ error: "Webhook processing error" });
+    }
+  }
+);
 app.use(express2.json({
   verify: (req, _res, buf) => {
     req.rawBody = buf;

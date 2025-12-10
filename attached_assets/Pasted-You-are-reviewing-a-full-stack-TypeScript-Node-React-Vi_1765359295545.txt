@@ -1,0 +1,35 @@
+You are reviewing a full‑stack TypeScript/Node/React/Vite/Express project called "TOYPETME". The stack is:
+
+- Frontend: React + TypeScript + Vite
+- Backend: Express + TypeScript
+- Database: Supabase (Postgres) with RLS enabled on users, pets, inventory, user_challenges, user_mini_game_sessions, breeding_records, and read‑only config tables (mini_games, shop_items, eggs, challenges).
+
+Please:
+
+1. Scan the project for build/runtime problems
+   - Check TypeScript errors on both client and server.
+   - Verify that all imports resolve (no missing files or modules).
+   - Confirm `npm run build` and `npm run dev` should succeed for both client and server.
+   - Highlight any obvious issues that would break deploys on Vercel (serverless Express handler, `vercel.json`, etc.).
+
+2. Check backend behavior
+   - Verify the main Express entry point (api/index.ts or server/index.ts) exports a handler compatible with Vercel.
+   - Confirm API routes used by the frontend actually exist (e.g., auth, pets, inventory, challenges, mini‑games, breeding, etc.).
+   - Look for unhandled promise rejections, missing `await`, or unprotected routes that should rely on Supabase RLS.
+
+3. Check Supabase integration
+   - Ensure environment variables are correctly referenced (SUPABASE_URL, SUPABASE_ANON_KEY or service role key, DATABASE_URL, etc.).
+   - Verify queries include the correct `user_id` / `auth` context to match the RLS policies (users.id and all user_* tables store user IDs as text/varchar).
+   - Flag any queries that would now fail with “permission denied” under the new RLS rules.
+
+4. Check frontend logic
+   - Confirm login / signup flows, pet loading, inventory, challenges, mini‑game sessions, and breeding features call the correct backend routes.
+   - Look for obvious React errors (invalid hooks usage, missing keys, etc.) that would cause runtime crashes.
+   - Ensure URLs used in the client match the deployed Vercel host and API paths.
+
+5. Summarize
+   - List any **errors or high‑risk issues** that would prevent TOYPETME from working correctly.
+   - List **warnings / cleanup suggestions** (non‑critical).
+   - If everything looks OK, explicitly say: “TOYPETME should build and run without errors given the current configuration.”
+
+Work step‑by‑step and show concrete file paths + code snippets for each problem you find, plus a short fix for each.
