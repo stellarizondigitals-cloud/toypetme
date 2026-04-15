@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
 import AdSlot from "@/components/AdSlot";
+import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
 import { Lock, CheckCircle } from "lucide-react";
@@ -14,7 +15,7 @@ export default function Achievements() {
   const unlockedCount = unlockedIds.size;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -94,6 +95,9 @@ export default function Achievements() {
             );
           })}
         </div>
+
+        <AdSlot format="rectangle" className="mx-auto mt-4 mb-2" />
+        <Footer />
       </div>
 
       <BottomTabNav />

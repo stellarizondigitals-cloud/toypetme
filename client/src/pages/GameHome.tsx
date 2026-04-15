@@ -6,6 +6,7 @@ import ActionButtons from "@/components/ActionButtons";
 import StatsPanel from "@/components/StatsPanel";
 import BottomTabNav from "@/components/BottomTabNav";
 import AdSlot from "@/components/AdSlot";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -300,7 +301,7 @@ export default function GameHome() {
 
   // Main game screen
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
@@ -403,12 +404,14 @@ export default function GameHome() {
         {/* Mid-page ad */}
         <AdSlot format="rectangle" className="mx-auto" />
 
-        {/* SEO-friendly game info (hidden visually but present for SEO) */}
-        <div className="text-center py-4">
+        {/* SEO-friendly game info */}
+        <div className="text-center py-2">
           <p className="text-xs text-muted-foreground">
             ToyPetMe — Free virtual pet game. No sign-up required.
           </p>
         </div>
+
+        <Footer />
       </div>
 
       <BottomTabNav />

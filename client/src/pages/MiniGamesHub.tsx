@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
 import AdSlot from "@/components/AdSlot";
+import Footer from "@/components/Footer";
 import { loadState, saveState, updateHighScore } from "@/lib/gameStorage";
 import { useToast } from "@/hooks/use-toast";
 import { Trophy, Zap, Brain, ChefHat, ArrowLeft } from "lucide-react";
@@ -435,7 +436,7 @@ export default function MiniGamesHub() {
   if (activeGame) {
     const gameInfo = GAMES.find((g) => g.id === activeGame)!;
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
         <GameHeader />
         <div className="max-w-2xl mx-auto px-4 pt-4">
           <Button
@@ -448,6 +449,9 @@ export default function MiniGamesHub() {
             <ArrowLeft size={16} />
             Back to Games
           </Button>
+
+          {/* Ad above active game */}
+          <AdSlot format="banner" className="mx-auto mb-4" />
 
           <Card>
             <CardContent className="p-2">
@@ -462,6 +466,9 @@ export default function MiniGamesHub() {
               )}
             </CardContent>
           </Card>
+
+          <AdSlot format="rectangle" className="mx-auto mt-4" />
+          <Footer />
         </div>
         <BottomTabNav />
       </div>
@@ -469,7 +476,7 @@ export default function MiniGamesHub() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -520,6 +527,8 @@ export default function MiniGamesHub() {
         <div className="mt-4">
           <AdSlot format="rectangle" className="mx-auto" />
         </div>
+
+        <Footer />
       </div>
 
       <BottomTabNav />

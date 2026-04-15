@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
 import AdSlot from "@/components/AdSlot";
+import Footer from "@/components/Footer";
 import { loadState, applyDecay, getHealth } from "@/lib/gameStorage";
 import { PET_SPECIES, getStageName } from "@/lib/petData";
 import { Zap, Heart, Utensils, Droplets, Crown } from "lucide-react";
@@ -14,7 +15,7 @@ export default function Collection() {
   const ownedSpecies = new Set(state.pets.map((p) => p.species));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -157,6 +158,9 @@ export default function Collection() {
             })}
           </div>
         </section>
+
+        <AdSlot format="rectangle" className="mx-auto mb-2" />
+        <Footer />
       </div>
 
       <BottomTabNav />

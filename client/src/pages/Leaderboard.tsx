@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
 import AdSlot from "@/components/AdSlot";
+import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
 import { Trophy, Zap, Brain, ChefHat, Star } from "lucide-react";
@@ -38,7 +39,7 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-40">
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -170,6 +171,9 @@ export default function Leaderboard() {
             </p>
           </CardContent>
         </Card>
+
+        <AdSlot format="rectangle" className="mx-auto mb-4" />
+        <Footer />
       </div>
 
       <BottomTabNav />

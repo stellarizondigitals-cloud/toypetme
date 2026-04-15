@@ -57,6 +57,20 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - JSON-LD structured data (VideoGame schema)
 - Descriptive page titles and descriptions
 
+## Legal Pages
+- `/privacy` — Full Privacy Policy (GDPR, CCPA, AdSense compliant), under Stellarizon Digitals
+- `/terms` — Terms of Service
+- `CookieBanner.tsx` — GDPR cookie consent popup (appears after 1.2s delay, stores choice in localStorage)
+- `Footer.tsx` — Appears on every game page with Privacy Policy, Terms, company links, contact
+
+## Ad Placements (Maximized)
+- **Sticky anchor banner** inside `BottomTabNav` — always visible above nav tabs (highest CPM on mobile)
+- **Top banner** (320×50) — top of every page
+- **Mid-page rectangle** (300×250) — middle of every page (after main content)
+- **In-game banner** — shown above mini-game canvas during active gameplay
+- **Post-game rectangle** — shown below game card after game ends
+- All slots ready for Google AdSense `ca-pub-XXXXXXXXXXXXXXXX` publisher ID activation
+
 ## User Preferences
 - Simple, everyday language
 - 100% free-tier infrastructure (no paid hosting, databases, or services)

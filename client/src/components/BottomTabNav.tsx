@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
 import { Home, Grid3X3, Gamepad2, Trophy, Star } from "lucide-react";
+import AdSlot from "@/components/AdSlot";
 
 const tabs = [
   { path: "/", icon: Home, label: "Home" },
@@ -18,6 +19,11 @@ export default function BottomTabNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       data-testid="bottom-nav"
     >
+      {/* Sticky anchor banner ad — highest CPM placement on mobile */}
+      <div className="flex items-center justify-center py-1 bg-muted/30 border-b border-border/40">
+        <AdSlot format="banner" slot="sticky-bottom" className="mx-auto" />
+      </div>
+
       <div className="max-w-2xl mx-auto flex items-center">
         {tabs.map(({ path, icon: Icon, label }) => {
           const isActive = location === path;
