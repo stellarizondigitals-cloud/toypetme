@@ -1,66 +1,42 @@
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Settings, Bell, DollarSign, Gem, Crown } from "lucide-react";
-import { formatCurrency } from "@/lib/currency";
+import { Flame, Coins } from "lucide-react";
+import { loadState } from "@/lib/gameStorage";
 
 interface GameHeaderProps {
-  coins: number | undefined;
-  gems: number | undefined;
-  premium?: boolean;
-  notifications: number;
+  onRefresh?: () => void;
 }
 
-export default function GameHeader({ coins, gems, premium, notifications }: GameHeaderProps) {
+export default function GameHeader({ onRefresh }: GameHeaderProps) {
+  const state = loadState();
+  const activePet = state.pets.find((p) => p.id === state.activePetId);
+
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-      <div className="max-w-2xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-card px-3 py-1.5 rounded-full border">
-              <DollarSign className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-semibold" data-testid="text-coins">
-                {formatCurrency(coins)}
-              </span>
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14 gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xl font-black tracking-tight text-primary" style={{ fontFamily: "Outfit, sans-serif" }}>
+            ToyPetMe
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {state.dailyStreak > 0 && (
+            <div className="flex items-center gap-1 bg-orange-50 text-orange-600 rounded-full px-2 py-0.5" data-testid="streak-display">
+              <Flame size={14} />
+              <span className="text-xs font-bold">{state.dailyStreak}</span>
             </div>
-            <div className="flex items-center gap-1 bg-card px-3 py-1.5 rounded-full border">
-              <Gem className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold" data-testid="text-gems">
-                {(gems ?? 0).toLocaleString()}
-              </span>
-            </div>
-            {premium && (
-              <Badge variant="default" className="gap-1" data-testid="badge-premium">
-                <Crown className="w-3 h-3" />
-                Premium
-              </Badge>
-            )}
+          )}
+
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 rounded-full px-2.5 py-0.5" data-testid="coins-display">
+            <Coins size={14} />
+            <span className="text-sm font-bold">{state.coins.toLocaleString()}</span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              className="relative"
-              data-testid="button-notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {notifications > 0 && (
-                <Badge 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  data-testid="badge-notification-count"
-                >
-                  {notifications}
-                </Badge>
-              )}
-            </Button>
-            <Button 
-              size="icon" 
-              variant="ghost"
-              data-testid="button-settings"
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
-          </div>
+          {activePet && (
+            <div className="flex items-center gap-1 bg-violet-50 text-violet-700 rounded-full px-2.5 py-0.5" data-testid="level-display">
+              <span className="text-xs font-semibold">Lv</span>
+              <span className="text-sm font-bold">{activePet.level}</span>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -1,360 +1,417 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import GameHeader from "@/components/GameHeader";
 import PetDisplay from "@/components/PetDisplay";
 import ActionButtons from "@/components/ActionButtons";
-import QuickActions from "@/components/QuickActions";
-import AdBanner from "@/components/AdBanner";
+import StatsPanel from "@/components/StatsPanel";
 import BottomTabNav from "@/components/BottomTabNav";
-import EmailVerificationBanner from "@/components/EmailVerificationBanner";
-import EvolutionAnimation from "@/components/EvolutionAnimation";
-import { TutorialContainer } from "@/components/tutorial/TutorialContainer";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Pet, User } from "@shared/schema";
-import { formatCurrency, formatCoinReward } from "@/lib/currency";
-import { DAILY_LOGIN_BONUS, PET_ACTIONS } from "@shared/schema";
+import AdSlot from "@/components/AdSlot";
 import { Button } from "@/components/ui/button";
-import { Globe } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import {
+  loadState,
+  saveState,
+  createPet,
+  performAction,
+  checkDailyLogin,
+  type GameState,
+  type ActionType,
+  type Species,
+} from "@/lib/gameStorage";
+import { PET_SPECIES, PET_NAME_SUGGESTIONS } from "@/lib/petData";
+import { Plus, Share2, Trophy } from "lucide-react";
+
+type Screen = "loading" | "create" | "game" | "daily";
 
 export default function GameHome() {
+  const [state, setState] = useState<GameState>(() => loadState());
+  const [screen, setScreen] = useState<Screen>("loading");
+  const [actingAction, setActingAction] = useState<string | null>(null);
+  const [dailyBonus, setDailyBonus] = useState(0);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [evolutionState, setEvolutionState] = useState<{
-    isOpen: boolean;
-    petName: string;
-    newStage: number;
-    newLevel: number;
-  }>({
-    isOpen: false,
-    petName: "",
-    newStage: 0,
-    newLevel: 1,
-  });
-  const [dailyRewardClaimed, setDailyRewardClaimed] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
 
-  // Fetch user data
-  const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
-    queryKey: ["/api/me"],
-    retry: 3,
-  });
+  // New pet creation state
+  const [newPetSpecies, setNewPetSpecies] = useState<Species>("cat");
+  const [newPetColor, setNewPetColor] = useState<string>("#F97316");
+  const [newPetName, setNewPetName] = useState("");
 
-  // Check if user needs to see tutorial
+  // Initialize
   useEffect(() => {
-    if (user && !user.tutorialCompleted) {
-      setShowTutorial(true);
+    let s = loadState();
+    // Daily login check
+    const { state: newState, isNew, bonus } = checkDailyLogin(s);
+    if (isNew) {
+      s = newState;
+      setDailyBonus(bonus);
     }
-  }, [user]);
+    saveState(s);
+    setState(s);
 
-  // Fetch pet data (skip if tutorial should be shown to avoid 404 errors)
-  const shouldFetchPet = user && user.tutorialCompleted;
-  const { data: pet, isLoading: petLoading, isError: petError } = useQuery<Pet>({
-    queryKey: ["/api/pet"],
-    refetchInterval: 30000, // Refresh every 30 seconds to show stat decay
-    retry: 3,
-    enabled: shouldFetchPet, // Only fetch pet if tutorial is completed
-  });
-
-  // Feed mutation
-  const feedMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/pet/feed");
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.setQueryData(["/api/pet"], data.pet);
-      queryClient.setQueryData(["/api/user"], data.user);
-      
-      // Handle evolution
-      if (data.evolved) {
-        setEvolutionState({
-          isOpen: true,
-          petName: data.pet.name,
-          newStage: data.newStage,
-          newLevel: data.pet.level,
-        });
-      } else if (data.leveledUp) {
-        toast({
-          title: "🎉 Level Up!",
-          description: `${data.pet.name} reached level ${data.newLevel}! +5 XP`,
-        });
+    if (s.pets.length === 0) {
+      setScreen("create");
+    } else {
+      if (isNew) {
+        setScreen("daily");
       } else {
-        toast({
-          title: "Fed your pet!",
-          description: `Your pet loves the food! +20 Hunger, +5 XP, ${formatCoinReward(PET_ACTIONS.feed.coinReward)}`,
-        });
+        setScreen("game");
       }
-    },
-    onError: (error: any) => {
-      const message = error.message || "Failed to feed pet";
-      toast({
-        title: "Cannot feed right now",
-        description: message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Play mutation
-  const playMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/pet/play");
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.setQueryData(["/api/pet"], data.pet);
-      queryClient.setQueryData(["/api/user"], data.user);
-      
-      if (data.evolved) {
-        setEvolutionState({
-          isOpen: true,
-          petName: data.pet.name,
-          newStage: data.newStage,
-          newLevel: data.pet.level,
-        });
-      } else if (data.leveledUp) {
-        toast({
-          title: "🎉 Level Up!",
-          description: `${data.pet.name} reached level ${data.newLevel}! +10 XP`,
-        });
-      } else {
-        toast({
-          title: "Playing with your pet!",
-          description: `So much fun! +15 Happiness, +10 XP, ${formatCoinReward(PET_ACTIONS.play.coinReward)}`,
-        });
-      }
-    },
-    onError: (error: any) => {
-      const message = error.message || "Failed to play with pet";
-      toast({
-        title: "Cannot play right now",
-        description: message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Clean mutation
-  const cleanMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/pet/clean");
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.setQueryData(["/api/pet"], data.pet);
-      queryClient.setQueryData(["/api/user"], data.user);
-      
-      if (data.evolved) {
-        setEvolutionState({
-          isOpen: true,
-          petName: data.pet.name,
-          newStage: data.newStage,
-          newLevel: data.pet.level,
-        });
-      } else if (data.leveledUp) {
-        toast({
-          title: "🎉 Level Up!",
-          description: `${data.pet.name} reached level ${data.newLevel}! +8 XP`,
-        });
-      } else {
-        toast({
-          title: "Cleaned your pet!",
-          description: `All sparkly and clean! +25 Cleanliness, +8 XP, ${formatCoinReward(PET_ACTIONS.clean.coinReward)}`,
-        });
-      }
-    },
-    onError: (error: any) => {
-      const message = error.message || "Failed to clean pet";
-      toast({
-        title: "Cannot clean right now",
-        description: message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Sleep mutation
-  const sleepMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/pet/sleep");
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.setQueryData(["/api/pet"], data.pet);
-      queryClient.setQueryData(["/api/user"], data.user);
-      
-      if (data.evolved) {
-        setEvolutionState({
-          isOpen: true,
-          petName: data.pet.name,
-          newStage: data.newStage,
-          newLevel: data.pet.level,
-        });
-      } else if (data.leveledUp) {
-        toast({
-          title: "🎉 Level Up!",
-          description: `${data.pet.name} reached level ${data.newLevel}! +5 XP`,
-        });
-      } else {
-        toast({
-          title: "Pet is resting...",
-          description: `Sweet dreams! +30 Energy, +5 XP, ${formatCoinReward(PET_ACTIONS.sleep.coinReward)}`,
-        });
-      }
-    },
-    onError: (error: any) => {
-      const message = error.message || "Failed to put pet to sleep";
-      toast({
-        title: "Cannot sleep right now",
-        description: message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Daily reward mutation
-  const dailyRewardMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/daily-reward");
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.setQueryData(["/api/user"], data);
-      setDailyRewardClaimed(true);
-      toast({
-        title: "🎁 Daily Login Bonus!",
-        description: `Welcome back! You earned ${formatCurrency(DAILY_LOGIN_BONUS)}`,
-        duration: 5000,
-      });
-    },
-    onError: () => {
-      // Silently fail if already claimed today
-      setDailyRewardClaimed(true);
-    },
-  });
-
-  // Attempt to claim daily reward on mount
-  useEffect(() => {
-    if (user && !dailyRewardClaimed) {
-      dailyRewardMutation.mutate();
     }
-  }, [user?.id]);
+  }, []);
 
-  // Show loading state only when waiting for user data or pet data (if tutorial is completed)
-  if (userLoading || (user?.tutorialCompleted && petLoading)) {
+  const activePet = state.pets.find((p) => p.id === state.activePetId) ?? state.pets[0];
+
+  const handleAction = useCallback(
+    (action: ActionType) => {
+      if (!activePet) return;
+      setActingAction(action);
+
+      const { state: newState, result } = performAction(state, activePet.id, action);
+
+      if (result.success) {
+        saveState(newState);
+        setState(newState);
+
+        const msgs: Record<ActionType, string> = {
+          feed: `Fed ${activePet.name}!`,
+          play: `Played with ${activePet.name}!`,
+          clean: `Cleaned ${activePet.name}!`,
+          sleep: `${activePet.name} is resting...`,
+        };
+        toast({
+          title: msgs[action],
+          description: `+${result.coinsEarned} coins  +${result.xpEarned} XP`,
+          duration: 1800,
+        });
+
+        if (result.evolved) {
+          toast({
+            title: `✨ ${activePet.name} evolved!`,
+            description: "Your pet grew into a new stage!",
+            duration: 4000,
+          });
+        }
+        if (result.leveledUp) {
+          toast({
+            title: `Level Up! Now Lv ${result.pet.level}`,
+            duration: 2500,
+          });
+        }
+        if (result.newAchievements.length > 0) {
+          result.newAchievements.forEach((id) => {
+            toast({
+              title: "Achievement Unlocked!",
+              description: id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+              duration: 3000,
+            });
+          });
+        }
+      } else {
+        toast({ title: result.reason ?? "On cooldown", duration: 1200 });
+      }
+
+      setTimeout(() => setActingAction(null), 800);
+    },
+    [activePet, state, toast]
+  );
+
+  const handleCreatePet = () => {
+    const name = newPetName.trim() || PET_NAME_SUGGESTIONS[newPetSpecies][0];
+    const pet = createPet(name, newPetSpecies, newPetColor);
+    const newState: GameState = {
+      ...state,
+      pets: [...state.pets, pet],
+      activePetId: state.activePetId ?? pet.id,
+      tutorialDone: true,
+    };
+    saveState(newState);
+    setState(newState);
+    setScreen("game");
+    toast({ title: `Welcome, ${name}!`, description: "Your new pet is ready to be cared for!", duration: 3000 });
+  };
+
+  const handleShare = () => {
+    if (!activePet) return;
+    const text = `My ${activePet.name} is Level ${activePet.level} on ToyPetMe! Come play the free virtual pet game! 🐾`;
+    const url = "https://toypetme.replit.app";
+    if (navigator.share) {
+      navigator.share({ title: "ToyPetMe", text, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(`${text} ${url}`).then(() => {
+        toast({ title: "Copied to clipboard!", description: "Share with your friends!" });
+      });
+    }
+  };
+
+  // ---- SCREENS ----
+  if (screen === "loading") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-bounce text-4xl mb-4">🐾</div>
-          <p className="text-muted-foreground">Loading your pet...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-400 to-pink-400 mx-auto animate-pulse" />
+          <p className="text-lg font-bold text-primary" style={{ fontFamily: "Outfit, sans-serif" }}>ToyPetMe</p>
         </div>
       </div>
     );
   }
 
-  if (userError || !user) {
+  if (screen === "daily") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center space-y-4 p-4">
-          <div className="text-6xl">😔</div>
-          <h2 className="text-2xl font-bold">Oops! Something went wrong</h2>
-          <p className="text-muted-foreground">
-            We couldn't load your account. Please try refreshing the page.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover-elevate active-elevate-2"
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 p-4">
+        <div className="max-w-sm w-full text-center space-y-6">
+          <div className="text-6xl">🎁</div>
+          <div>
+            <h1 className="text-3xl font-black text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
+              Daily Bonus!
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {state.dailyStreak} day streak — keep it up!
+            </p>
+          </div>
+          <div className="text-5xl font-black text-amber-500">+{dailyBonus}</div>
+          <p className="text-muted-foreground">coins added to your balance</p>
+          <Button
+            size="lg"
+            className="w-full text-base font-bold"
+            onClick={() => setScreen("game")}
+            data-testid="button-claim-daily"
           >
-            Refresh Page
-          </button>
+            Collect & Play!
+          </Button>
         </div>
       </div>
     );
   }
 
-  // Show tutorial for new users (check tutorialCompleted directly, not state)
-  if (!user.tutorialCompleted) {
-    return <TutorialContainer onComplete={() => setShowTutorial(false)} />;
-  }
-
-  // After tutorial, we need a pet (only check petError if tutorial is completed)
-  if (petError || !pet) {
+  if (screen === "create") {
+    const speciesData = PET_SPECIES.find((s) => s.id === newPetSpecies) ?? PET_SPECIES[0];
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center space-y-4 p-4">
-          <div className="text-6xl">😔</div>
-          <h2 className="text-2xl font-bold">Oops! Something went wrong</h2>
-          <p className="text-muted-foreground">
-            We couldn't load your pet. Please try refreshing the page.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover-elevate active-elevate-2"
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 p-4">
+        <div className="max-w-2xl mx-auto space-y-6 pt-8">
+          <div className="text-center space-y-1">
+            <h1 className="text-3xl font-black text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
+              Adopt Your Pet
+            </h1>
+            <p className="text-muted-foreground">Choose your companion and start your adventure!</p>
+          </div>
+
+          {/* Species picker */}
+          <div>
+            <p className="text-sm font-semibold text-muted-foreground mb-2">Choose species</p>
+            <div className="grid grid-cols-5 gap-2">
+              {PET_SPECIES.map((sp) => (
+                <button
+                  key={sp.id}
+                  onClick={() => {
+                    setNewPetSpecies(sp.id);
+                    setNewPetColor(sp.colors[0].hex);
+                    setNewPetName("");
+                  }}
+                  data-testid={`species-${sp.id}`}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${
+                    newPetSpecies === sp.id
+                      ? "border-primary bg-primary/5 scale-105"
+                      : "border-border bg-card hover:border-primary/50"
+                  }`}
+                >
+                  <span className="text-xs font-semibold text-center leading-tight">{sp.name.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div>
+            <p className="text-sm font-semibold text-muted-foreground mb-2">Pick a color</p>
+            <div className="flex gap-3 flex-wrap">
+              {speciesData.colors.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setNewPetColor(c.hex)}
+                  data-testid={`color-${c.id}`}
+                  className={`w-9 h-9 rounded-full border-4 transition-all ${
+                    newPetColor === c.hex ? "border-primary scale-110" : "border-transparent"
+                  }`}
+                  style={{ background: c.hex }}
+                  title={c.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Name input */}
+          <div>
+            <p className="text-sm font-semibold text-muted-foreground mb-2">Name your pet</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newPetName}
+                onChange={(e) => setNewPetName(e.target.value)}
+                placeholder={PET_NAME_SUGGESTIONS[newPetSpecies][0]}
+                maxLength={20}
+                data-testid="input-pet-name"
+                className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => {
+                  const names = PET_NAME_SUGGESTIONS[newPetSpecies];
+                  setNewPetName(names[Math.floor(Math.random() * names.length)]);
+                }}
+                data-testid="button-random-name"
+              >
+                Random
+              </Button>
+            </div>
+          </div>
+
+          {/* Description */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex-shrink-0"
+                  style={{ background: newPetColor }}
+                />
+                <div>
+                  <p className="font-semibold">{speciesData.name}</p>
+                  <p className="text-xs text-muted-foreground">{speciesData.description}</p>
+                  <Badge variant="secondary" className="mt-1 text-xs">{speciesData.personality}</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            size="lg"
+            className="w-full text-base font-bold"
+            onClick={handleCreatePet}
+            data-testid="button-adopt-pet"
           >
-            Refresh Page
-          </button>
+            Adopt {newPetName.trim() || PET_NAME_SUGGESTIONS[newPetSpecies][0]}!
+          </Button>
         </div>
       </div>
     );
   }
 
+  // Main game screen
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 pb-20">
-      <GameHeader 
-        coins={user.coins} 
-        gems={user.gems} 
-        premium={user.premium}
-        notifications={0} 
-      />
-      
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {!user.verified && (
-          <EmailVerificationBanner userEmail={user.email} />
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+      <GameHeader />
+
+      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+        {/* Ad slot */}
+        <AdSlot format="banner" className="mx-auto" />
+
+        {/* Pet switcher (if multiple pets) */}
+        {state.pets.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {state.pets.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  const updated = { ...state, activePetId: p.id };
+                  saveState(updated);
+                  setState(updated);
+                }}
+                data-testid={`switch-pet-${p.id}`}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  state.activePetId === p.id || (!state.activePetId && p === state.pets[0])
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground"
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
         )}
-        
-        <PetDisplay 
-          pet={pet}
-          size="large"
-          showStats={true}
-          showXP={true}
-        />
-        
-        <ActionButtons
-          pet={pet}
-          onFeed={() => feedMutation.mutate()}
-          onPlay={() => playMutation.mutate()}
-          onClean={() => cleanMutation.mutate()}
-          onSleep={() => sleepMutation.mutate()}
-          isLoading={feedMutation.isPending || playMutation.isPending || cleanMutation.isPending || sleepMutation.isPending}
-        />
-        
-        {/* AR Pet View Button */}
-        <Button
-          onClick={() => setLocation("/ar")}
-          size="lg"
-          className="w-full bg-gradient-to-r from-blue-400 to-purple-500 hover:from-blue-500 hover:to-purple-600"
-          data-testid="button-ar-view"
-        >
-          <Globe className="mr-2 w-4 h-4" />
-          View Pet in AR 🌍
-        </Button>
-        
-        <QuickActions />
-        
-        <AdBanner user={user} />
-      </main>
-      
+
+        {/* Pet display */}
+        {activePet && (
+          <div className="flex flex-col items-center py-4">
+            <PetDisplay pet={activePet} isActing={actingAction} />
+          </div>
+        )}
+
+        {/* XP bar */}
+        {activePet && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-14">XP {activePet.xp}</span>
+            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700"
+                style={{ width: `${(activePet.xp / (activePet.level * 50)) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground w-14 text-right">{activePet.level * 50} XP</span>
+          </div>
+        )}
+
+        {/* Stats */}
+        {activePet && <StatsPanel pet={activePet} />}
+
+        {/* Action buttons */}
+        {activePet && (
+          <ActionButtons
+            pet={activePet}
+            onAction={handleAction}
+            disabled={!!actingAction}
+          />
+        )}
+
+        {/* Bottom actions row */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="default"
+            className="flex-1 gap-2"
+            onClick={handleShare}
+            data-testid="button-share"
+          >
+            <Share2 size={15} />
+            Share
+          </Button>
+          <Button
+            variant="outline"
+            size="default"
+            className="flex-1 gap-2"
+            onClick={() => setLocation("/leaderboard")}
+            data-testid="button-leaderboard"
+          >
+            <Trophy size={15} />
+            Ranks
+          </Button>
+          {state.pets.length < 8 && (
+            <Button
+              variant="outline"
+              size="default"
+              className="flex-1 gap-2"
+              onClick={() => setScreen("create")}
+              data-testid="button-add-pet"
+            >
+              <Plus size={15} />
+              New Pet
+            </Button>
+          )}
+        </div>
+
+        {/* Mid-page ad */}
+        <AdSlot format="rectangle" className="mx-auto" />
+
+        {/* SEO-friendly game info (hidden visually but present for SEO) */}
+        <div className="text-center py-4">
+          <p className="text-xs text-muted-foreground">
+            ToyPetMe — Free virtual pet game. No sign-up required.
+          </p>
+        </div>
+      </div>
+
       <BottomTabNav />
-      
-      <EvolutionAnimation
-        isOpen={evolutionState.isOpen}
-        onClose={() => setEvolutionState(prev => ({ ...prev, isOpen: false }))}
-        petName={evolutionState.petName}
-        newStage={evolutionState.newStage}
-        newLevel={evolutionState.newLevel}
-      />
     </div>
   );
 }

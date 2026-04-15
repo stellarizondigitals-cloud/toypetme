@@ -1,37 +1,46 @@
-import { Home, ShoppingBag, Package, PawPrint, Crown, Trophy, Award, Target } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
+import { Home, Grid3X3, Gamepad2, Trophy, Star } from "lucide-react";
+
+const tabs = [
+  { path: "/", icon: Home, label: "Home" },
+  { path: "/collection", icon: Grid3X3, label: "Pets" },
+  { path: "/minigames", icon: Gamepad2, label: "Games" },
+  { path: "/leaderboard", icon: Trophy, label: "Ranks" },
+  { path: "/achievements", icon: Star, label: "Awards" },
+];
 
 export default function BottomTabNav() {
-  const [location, setLocation] = useLocation();
-
-  const tabs = [
-    { id: "home", icon: Home, label: "Home", path: "/" },
-    { id: "collection", icon: Trophy, label: "Collection", path: "/collection" },
-    { id: "challenges", icon: Target, label: "Challenges", path: "/challenges" },
-    { id: "leaderboard", icon: Award, label: "Ranks", path: "/leaderboard" },
-    { id: "shop", icon: ShoppingBag, label: "Shop", path: "/shop" },
-  ];
+  const [location] = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t safe-area-bottom">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-around h-16">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.id}
-              variant="ghost"
-              className={`flex-1 flex flex-col items-center justify-center gap-1 h-full rounded-none ${
-                location === tab.path ? "text-primary" : "text-muted-foreground"
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      data-testid="bottom-nav"
+    >
+      <div className="max-w-2xl mx-auto flex items-center">
+        {tabs.map(({ path, icon: Icon, label }) => {
+          const isActive = location === path;
+          return (
+            <Link
+              key={path}
+              href={path}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 transition-colors ${
+                isActive
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
-              onClick={() => setLocation(tab.path)}
-              data-testid={`button-tab-${tab.id}`}
+              data-testid={`nav-${label.toLowerCase()}`}
             >
-              <tab.icon className="h-5 w-5" />
-              <span className="text-xs font-medium">{tab.label}</span>
-            </Button>
-          ))}
-        </div>
+              <Icon
+                size={20}
+                className={`transition-transform ${isActive ? "scale-110" : ""}`}
+                strokeWidth={isActive ? 2.5 : 1.8}
+              />
+              <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

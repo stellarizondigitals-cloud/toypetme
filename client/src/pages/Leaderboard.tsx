@@ -1,364 +1,176 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy, Medal, Coins, Users, Crown } from "lucide-react";
-import GameHeader from "@/components/GameHeader";
+import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
-import type { User } from "@shared/schema";
-import { getQueryFn } from "@/lib/queryClient";
-
-type LeaderboardCategory = "highest-level" | "most-pets" | "total-coins";
-
-type HighestLevelEntry = {
-  userId: string;
-  username: string;
-  maxLevel: number;
-  petName: string;
-  rank: number;
-};
-
-type MostPetsEntry = {
-  userId: string;
-  username: string;
-  petCount: number;
-  rank: number;
-};
-
-type TotalCoinsEntry = {
-  userId: string;
-  username: string;
-  coins: number;
-  rank: number;
-};
+import GameHeader from "@/components/GameHeader";
+import AdSlot from "@/components/AdSlot";
+import { loadState } from "@/lib/gameStorage";
+import { ACHIEVEMENTS } from "@/lib/petData";
+import { Trophy, Zap, Brain, ChefHat, Star } from "lucide-react";
 
 export default function Leaderboard() {
-  const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<LeaderboardCategory>("highest-level");
+  const state = useMemo(() => loadState(), []);
+  const activePet = state.pets.find((p) => p.id === state.activePetId) ?? state.pets[0];
+  const highestLevel = activePet?.level ?? 0;
+  const unlockedCount = state.achievements.length;
+  const totalCoins = state.coins;
 
-  const { data: user, isLoading: userLoading, isError: userError } = useQuery<User>({
-    queryKey: ["/api/auth/me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    retry: false,
-  });
+  const games = [
+    { id: "tap", name: "Tap Rush", icon: Zap, color: "text-orange-500" },
+    { id: "memory", name: "Memory Match", icon: Brain, color: "text-violet-500" },
+    { id: "catch", name: "Feed Frenzy", icon: ChefHat, color: "text-green-500" },
+  ];
 
-  // Leaderboard queries
-  const { data: highestLevelData, isLoading: loadingHighestLevel } = useQuery<{
-    leaderboard: HighestLevelEntry[];
-    currentUserRank: number | null;
-  }>({
-    queryKey: ["/api/leaderboard/highest-level"],
-    enabled: activeTab === "highest-level",
-  });
-
-  const { data: mostPetsData, isLoading: loadingMostPets } = useQuery<{
-    leaderboard: MostPetsEntry[];
-    currentUserRank: number | null;
-  }>({
-    queryKey: ["/api/leaderboard/most-pets"],
-    enabled: activeTab === "most-pets",
-  });
-
-  const { data: totalCoinsData, isLoading: loadingTotalCoins } = useQuery<{
-    leaderboard: TotalCoinsEntry[];
-    currentUserRank: number | null;
-  }>({
-    queryKey: ["/api/leaderboard/total-coins"],
-    enabled: activeTab === "total-coins",
-  });
-
-  // Auth guard
-  useEffect(() => {
-    if (!userLoading && user === null) {
-      setLocation("/login");
-    }
-  }, [user, userLoading, setLocation]);
-
-  if (userError) {
-    return (
-      <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
-        <GameHeader coins={0} gems={0} premium={false} notifications={0} />
-        <main className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
-          <div className="text-center py-8">
-            <p className="text-lg text-muted-foreground">Failed to load leaderboard</p>
-          </div>
-        </main>
-        <BottomTabNav />
-      </div>
-    );
-  }
-
-  if (userLoading) {
-    return (
-      <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
-        <GameHeader coins={0} gems={0} premium={false} notifications={0} />
-        <main className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-            <p className="text-muted-foreground mt-4">Loading...</p>
-          </div>
-        </main>
-        <BottomTabNav />
-      </div>
-    );
-  }
-
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="w-6 h-6 text-yellow-500" data-testid={`icon-trophy-${rank}`} />;
-    if (rank === 2) return <Medal className="w-6 h-6 text-gray-400" data-testid={`icon-medal-${rank}`} />;
-    if (rank === 3) return <Medal className="w-6 h-6 text-amber-600" data-testid={`icon-medal-${rank}`} />;
-    return <span className="text-muted-foreground font-semibold" data-testid={`text-rank-${rank}`}>#{rank}</span>;
-  };
-
-  const renderLeaderboard = () => {
-    if (activeTab === "highest-level") {
-      if (loadingHighestLevel) {
-        return (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          </div>
-        );
-      }
-
-      const leaderboard = highestLevelData?.leaderboard || [];
-      const currentUserRank = highestLevelData?.currentUserRank;
-
-      return (
-        <>
-          {currentUserRank && (
-            <Card className="mb-4 bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Crown className="w-6 h-6 text-primary" data-testid="icon-crown-user" />
-                    <div>
-                      <p className="font-semibold text-gray-800" data-testid="text-your-rank">Your Rank: #{currentUserRank}</p>
-                      <p className="text-sm text-muted-foreground">Keep climbing!</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="space-y-2">
-            {leaderboard.map((entry) => (
-              <Card
-                key={entry.userId}
-                className={entry.userId === user?.id ? "border-2 border-primary bg-purple-50" : ""}
-                data-testid={`card-leaderboard-${entry.rank}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 flex justify-center">{getRankIcon(entry.rank)}</div>
-                      <div>
-                        <p className="font-semibold text-gray-800" data-testid={`text-username-${entry.rank}`}>
-                          {entry.username}
-                          {entry.userId === user?.id && " (You)"}
-                        </p>
-                        <p className="text-sm text-muted-foreground" data-testid={`text-petname-${entry.rank}`}>
-                          {entry.petName}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-primary" data-testid={`text-level-${entry.rank}`}>
-                        Level {entry.maxLevel}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {leaderboard.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No leaderboard data yet. Create some pets to get started!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </>
-      );
-    }
-
-    if (activeTab === "most-pets") {
-      if (loadingMostPets) {
-        return (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          </div>
-        );
-      }
-
-      const leaderboard = mostPetsData?.leaderboard || [];
-      const currentUserRank = mostPetsData?.currentUserRank;
-
-      return (
-        <>
-          {currentUserRank && (
-            <Card className="mb-4 bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Crown className="w-6 h-6 text-primary" data-testid="icon-crown-user" />
-                    <div>
-                      <p className="font-semibold text-gray-800" data-testid="text-your-rank">Your Rank: #{currentUserRank}</p>
-                      <p className="text-sm text-muted-foreground">Keep collecting!</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="space-y-2">
-            {leaderboard.map((entry) => (
-              <Card
-                key={entry.userId}
-                className={entry.userId === user?.id ? "border-2 border-primary bg-purple-50" : ""}
-                data-testid={`card-leaderboard-${entry.rank}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 flex justify-center">{getRankIcon(entry.rank)}</div>
-                      <div>
-                        <p className="font-semibold text-gray-800" data-testid={`text-username-${entry.rank}`}>
-                          {entry.username}
-                          {entry.userId === user?.id && " (You)"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-primary" data-testid={`text-petcount-${entry.rank}`}>
-                        {entry.petCount} {entry.petCount === 1 ? "Pet" : "Pets"}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {leaderboard.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No leaderboard data yet. Create some pets to get started!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </>
-      );
-    }
-
-    if (activeTab === "total-coins") {
-      if (loadingTotalCoins) {
-        return (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          </div>
-        );
-      }
-
-      const leaderboard = totalCoinsData?.leaderboard || [];
-      const currentUserRank = totalCoinsData?.currentUserRank;
-
-      return (
-        <>
-          {currentUserRank && (
-            <Card className="mb-4 bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-primary">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Crown className="w-6 h-6 text-primary" data-testid="icon-crown-user" />
-                    <div>
-                      <p className="font-semibold text-gray-800" data-testid="text-your-rank">Your Rank: #{currentUserRank}</p>
-                      <p className="text-sm text-muted-foreground">Keep earning!</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="space-y-2">
-            {leaderboard.map((entry) => (
-              <Card
-                key={entry.userId}
-                className={entry.userId === user?.id ? "border-2 border-primary bg-purple-50" : ""}
-                data-testid={`card-leaderboard-${entry.rank}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 flex justify-center">{getRankIcon(entry.rank)}</div>
-                      <div>
-                        <p className="font-semibold text-gray-800" data-testid={`text-username-${entry.rank}`}>
-                          {entry.username}
-                          {entry.userId === user?.id && " (You)"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-amber-600" data-testid={`text-coins-${entry.rank}`}>
-                        {entry.coins} Coins
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {leaderboard.length === 0 && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No leaderboard data yet. Start earning coins!</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </>
-      );
-    }
-
-    return null;
+  const getRank = (score: number, game: string) => {
+    if (score === 0) return null;
+    // Fun simulated global ranks
+    const thresholds: Record<string, { bronze: number; silver: number; gold: number }> = {
+      tap: { bronze: 15, silver: 35, gold: 60 },
+      memory: { bronze: 20, silver: 50, gold: 80 },
+      catch: { bronze: 20, silver: 50, gold: 80 },
+    };
+    const t = thresholds[game];
+    if (!t) return null;
+    if (score >= t.gold) return { label: "Gold", color: "text-amber-500", emoji: "🥇" };
+    if (score >= t.silver) return { label: "Silver", color: "text-gray-400", emoji: "🥈" };
+    if (score >= t.bronze) return { label: "Bronze", color: "text-orange-700", emoji: "🥉" };
+    return { label: "Beginner", color: "text-muted-foreground", emoji: "🎮" };
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-pink-50">
-      <GameHeader coins={user?.coins} gems={user?.gems} premium={user?.premium} notifications={0} />
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 pb-20">
+      <GameHeader />
 
-      <main className="flex-1 overflow-auto p-4 max-w-2xl mx-auto w-full">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-yellow-500" />
-            Global Leaderboard
+      <div className="max-w-2xl mx-auto px-4 pt-4">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
+            Rankings
           </h1>
-          <p className="text-muted-foreground mt-2">
-            See how you rank against other ToyPetMe players
-          </p>
+          <p className="text-sm text-muted-foreground">Your progress and achievements</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LeaderboardCategory)}>
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="highest-level" data-testid="tab-highest-level">
-              <Trophy className="w-4 h-4 mr-2" />
-              Highest Level
-            </TabsTrigger>
-            <TabsTrigger value="most-pets" data-testid="tab-most-pets">
-              <Users className="w-4 h-4 mr-2" />
-              Most Pets
-            </TabsTrigger>
-            <TabsTrigger value="total-coins" data-testid="tab-total-coins">
-              <Coins className="w-4 h-4 mr-2" />
-              Total Coins
-            </TabsTrigger>
-          </TabsList>
+        <AdSlot format="banner" className="mx-auto mb-4" />
 
-          <TabsContent value={activeTab}>{renderLeaderboard()}</TabsContent>
-        </Tabs>
-      </main>
+        {/* Player Card */}
+        <Card className="mb-4 border-primary/30 bg-gradient-to-r from-violet-50 to-pink-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-400 to-pink-400 flex items-center justify-center text-white text-2xl font-black">
+                {activePet?.name[0] ?? "?"}
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-lg">{activePet?.name ?? "No pet yet"}</p>
+                <p className="text-sm text-muted-foreground">Your highest pet</p>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {highestLevel > 0 && (
+                    <Badge variant="secondary">Lv {highestLevel}</Badge>
+                  )}
+                  <Badge variant="secondary">{unlockedCount} achievements</Badge>
+                  <Badge variant="secondary">{totalCoins} coins</Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Streak card */}
+        {state.dailyStreak > 0 && (
+          <Card className="mb-4">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl flex-shrink-0">
+                🔥
+              </div>
+              <div>
+                <p className="font-bold">{state.dailyStreak} Day Streak!</p>
+                <p className="text-sm text-muted-foreground">Login daily for bigger rewards</p>
+              </div>
+              <div className="ml-auto text-2xl font-black text-orange-500">{state.dailyStreak}</div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Game Scores */}
+        <section className="mb-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Mini Game Records
+          </h2>
+          <div className="grid gap-3">
+            {games.map(({ id, name, icon: Icon, color }) => {
+              const best = state.highScores[id] ?? 0;
+              const rank = getRank(best, id);
+              return (
+                <Card key={id} data-testid={`score-card-${id}`}>
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <Icon size={20} className={color} />
+                    <div className="flex-1">
+                      <p className="font-semibold">{name}</p>
+                      {rank ? (
+                        <p className="text-sm text-muted-foreground">Rank: {rank.emoji} {rank.label}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Not played yet</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black text-primary">{best > 0 ? best : "—"}</p>
+                      <p className="text-xs text-muted-foreground">best</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Recent achievements */}
+        <section className="mb-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Recent Achievements
+          </h2>
+          {state.achievements.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-center text-muted-foreground text-sm">
+                No achievements yet — start caring for your pet!
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-2">
+              {state.achievements
+                .slice()
+                .sort((a, b) => b.unlockedAt - a.unlockedAt)
+                .slice(0, 5)
+                .map((a) => {
+                  const def = ACHIEVEMENTS.find((ac) => ac.id === a.id);
+                  if (!def) return null;
+                  return (
+                    <Card key={a.id}>
+                      <CardContent className="flex items-center gap-3 p-3">
+                        <span className="text-xl">{def.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">{def.name}</p>
+                          <p className="text-xs text-muted-foreground">{def.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          {new Date(a.unlockedAt).toLocaleDateString()}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          )}
+        </section>
+
+        {/* Global note */}
+        <Card className="mb-4 bg-muted/50">
+          <CardContent className="p-4 text-center space-y-2">
+            <Trophy size={28} className="text-amber-500 mx-auto" />
+            <p className="font-semibold">Share Your Score!</p>
+            <p className="text-sm text-muted-foreground">
+              Challenge your friends to beat your records. ToyPetMe is 100% free to play!
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       <BottomTabNav />
     </div>

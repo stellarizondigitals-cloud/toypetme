@@ -1,28 +1,58 @@
-import { Card } from "@/components/ui/card";
-import StatBar from "./StatBar";
-import { Utensils, Heart, Zap, Sparkles } from "lucide-react";
+import type { Pet } from "@/lib/gameStorage";
+import { applyDecay } from "@/lib/gameStorage";
+import { Utensils, Heart, Zap, Droplets } from "lucide-react";
 
 interface StatsPanelProps {
-  hunger: number;
-  happiness: number;
-  energy: number;
-  cleanliness: number;
+  pet: Pet;
 }
 
-export default function StatsPanel({ hunger, happiness, energy, cleanliness }: StatsPanelProps) {
+const STATS = [
+  { key: "hunger" as const, label: "Hunger", icon: Utensils, color: "#F97316" },
+  { key: "happiness" as const, label: "Happy", icon: Heart, color: "#EC4899" },
+  { key: "energy" as const, label: "Energy", icon: Zap, color: "#8B5CF6" },
+  { key: "cleanliness" as const, label: "Clean", icon: Droplets, color: "#3B82F6" },
+];
+
+export default function StatsPanel({ pet }: StatsPanelProps) {
+  const decayed = applyDecay(pet);
+
   return (
-    <Card className="p-6 space-y-4">
-      <h3 
-        className="text-xl font-semibold mb-4" 
-        style={{ fontFamily: 'Outfit, sans-serif' }}
-        data-testid="text-stats-title"
-      >
-        Pet Stats
-      </h3>
-      <StatBar icon={Utensils} label="Hunger" value={hunger} maxValue={100} color="text-pink-500" />
-      <StatBar icon={Heart} label="Happiness" value={happiness} maxValue={100} color="text-yellow-500" />
-      <StatBar icon={Zap} label="Energy" value={energy} maxValue={100} color="text-blue-500" />
-      <StatBar icon={Sparkles} label="Clean" value={cleanliness} maxValue={100} color="text-green-500" />
-    </Card>
+    <div className="grid grid-cols-2 gap-2 w-full" data-testid="stats-panel">
+      {STATS.map(({ key, label, icon: Icon, color }) => {
+        const value = Math.round(decayed[key]);
+        const isLow = value < 30;
+        const isGood = value > 70;
+
+        return (
+          <div key={key} className="bg-card border border-border rounded-xl p-3" data-testid={`stat-${key}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Icon size={13} style={{ color }} />
+                <span className="text-xs font-medium text-muted-foreground">{label}</span>
+              </div>
+              <span
+                className="text-xs font-bold"
+                style={{ color: isLow ? "#EF4444" : isGood ? "#22C55E" : "#6B7280" }}
+              >
+                {value}
+              </span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${value}%`,
+                  background: isLow
+                    ? "linear-gradient(90deg, #EF4444, #F97316)"
+                    : isGood
+                    ? `linear-gradient(90deg, ${color}, ${color}99)`
+                    : `linear-gradient(90deg, ${color}99, ${color})`,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

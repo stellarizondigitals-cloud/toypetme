@@ -1,210 +1,86 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Utensils, Gamepad2, Sparkles, Moon, Coins } from "lucide-react";
-import { PET_ACTIONS } from "@shared/schema";
-import type { Pet } from "@shared/schema";
-import { triggerHaptic } from "@/lib/haptics";
-
-function SparkleEffect({ show }: { show: boolean }) {
-  if (!show) return null;
-  
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
-      {[...Array(6)].map((_, i) => (
-        <div
-          key={i}
-          className="absolute"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `sparkle 1s ease-out ${i * 0.1}s`,
-          }}
-        >
-          <Sparkles className="w-4 h-4 text-yellow-400" />
-        </div>
-      ))}
-      <style>{`
-        @keyframes sparkle {
-          0% {
-            transform: scale(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1.5) rotate(180deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
+import { Utensils, Dumbbell, Sparkles, BedDouble } from "lucide-react";
+import type { Pet, ActionType } from "@/lib/gameStorage";
+import { COOLDOWNS, getCooldownRemaining, formatCooldown } from "@/lib/gameStorage";
 
 interface ActionButtonsProps {
   pet: Pet;
-  onFeed: () => void;
-  onPlay: () => void;
-  onClean: () => void;
-  onSleep: () => void;
-  isLoading?: boolean;
+  onAction: (action: ActionType) => void;
+  disabled?: boolean;
 }
 
-function getCooldownRemaining(lastActionTime: Date | null, cooldownMinutes: number): number {
-  if (!lastActionTime) return 0;
-  
-  const now = Date.now();
-  const lastAction = new Date(lastActionTime).getTime();
-  const cooldownMs = cooldownMinutes * 60 * 1000;
-  const elapsedMs = now - lastAction;
-  
-  if (elapsedMs >= cooldownMs) return 0;
-  
-  return Math.ceil((cooldownMs - elapsedMs) / 1000);
-}
+const ACTIONS: { id: ActionType; label: string; icon: typeof Utensils; color: string; bg: string }[] = [
+  { id: "feed", label: "Feed", icon: Utensils, color: "text-orange-600", bg: "bg-orange-50 hover:bg-orange-100" },
+  { id: "play", label: "Play", icon: Dumbbell, color: "text-pink-600", bg: "bg-pink-50 hover:bg-pink-100" },
+  { id: "clean", label: "Clean", icon: Sparkles, color: "text-blue-600", bg: "bg-blue-50 hover:bg-blue-100" },
+  { id: "sleep", label: "Sleep", icon: BedDouble, color: "text-violet-600", bg: "bg-violet-50 hover:bg-violet-100" },
+];
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-export default function ActionButtons({ pet, onFeed, onPlay, onClean, onSleep, isLoading }: ActionButtonsProps) {
-  const [cooldowns, setCooldowns] = useState({
-    feed: 0,
-    play: 0,
-    clean: 0,
-  });
-  const [showSparkles, setShowSparkles] = useState({
-    feed: false,
-    play: false,
-    clean: false,
-  });
-  const prevTimestamps = useRef({
-    lastFed: pet.lastFed,
-    lastPlayed: pet.lastPlayed,
-    lastCleaned: pet.lastCleaned,
+function useCountdown(pet: Pet) {
+  const [countdowns, setCountdowns] = useState<Record<ActionType, number>>({
+    feed: 0, play: 0, clean: 0, sleep: 0,
   });
 
   useEffect(() => {
-    const updateCooldowns = () => {
-      setCooldowns({
-        feed: getCooldownRemaining(pet.lastFed, PET_ACTIONS.feed.cooldownMinutes),
-        play: getCooldownRemaining(pet.lastPlayed, PET_ACTIONS.play.cooldownMinutes),
-        clean: getCooldownRemaining(pet.lastCleaned, PET_ACTIONS.clean.cooldownMinutes),
+    const update = () => {
+      setCountdowns({
+        feed: getCooldownRemaining(pet, "feed"),
+        play: getCooldownRemaining(pet, "play"),
+        clean: getCooldownRemaining(pet, "clean"),
+        sleep: getCooldownRemaining(pet, "sleep"),
       });
     };
-
-    updateCooldowns();
-    const interval = setInterval(updateCooldowns, 1000);
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [pet.lastFed, pet.lastPlayed, pet.lastCleaned]);
+  }, [pet]);
 
-  useEffect(() => {
-    const prev = prevTimestamps.current;
-    
-    if (pet.lastFed && pet.lastFed !== prev.lastFed) {
-      setShowSparkles(s => ({ ...s, feed: true }));
-      setTimeout(() => setShowSparkles(s => ({ ...s, feed: false })), 1000);
-    }
-    if (pet.lastPlayed && pet.lastPlayed !== prev.lastPlayed) {
-      setShowSparkles(s => ({ ...s, play: true }));
-      setTimeout(() => setShowSparkles(s => ({ ...s, play: false })), 1000);
-    }
-    if (pet.lastCleaned && pet.lastCleaned !== prev.lastCleaned) {
-      setShowSparkles(s => ({ ...s, clean: true }));
-      setTimeout(() => setShowSparkles(s => ({ ...s, clean: false })), 1000);
-    }
+  return countdowns;
+}
 
-    prevTimestamps.current = {
-      lastFed: pet.lastFed,
-      lastPlayed: pet.lastPlayed,
-      lastCleaned: pet.lastCleaned,
-    };
-  }, [pet.lastFed, pet.lastPlayed, pet.lastCleaned]);
+export default function ActionButtons({ pet, onAction, disabled }: ActionButtonsProps) {
+  const countdowns = useCountdown(pet);
+  const [lastPressed, setLastPressed] = useState<ActionType | null>(null);
 
-  const handleAction = (onClick: () => void, isDisabled?: boolean) => {
-    if (isDisabled) {
-      triggerHaptic('warning');
-      return;
-    }
-    triggerHaptic('medium');
-    onClick();
-  };
-
-  const actions = [
-    { 
-      icon: Utensils, 
-      label: "Feed", 
-      actionKey: "feed" as const,
-      onClick: onFeed, 
-      cooldown: cooldowns.feed,
-      reward: PET_ACTIONS.feed.coinReward,
-      testId: "button-feed",
-      hasCooldown: true
+  const handleAction = useCallback(
+    (action: ActionType) => {
+      if (countdowns[action] > 0 || disabled) return;
+      setLastPressed(action);
+      onAction(action);
+      if (navigator.vibrate) navigator.vibrate(30);
     },
-    { 
-      icon: Gamepad2, 
-      label: "Play", 
-      actionKey: "play" as const,
-      onClick: onPlay, 
-      cooldown: cooldowns.play,
-      reward: PET_ACTIONS.play.coinReward,
-      testId: "button-play",
-      hasCooldown: true
-    },
-    { 
-      icon: Sparkles, 
-      label: "Clean", 
-      actionKey: "clean" as const,
-      onClick: onClean, 
-      cooldown: cooldowns.clean,
-      reward: PET_ACTIONS.clean.coinReward,
-      testId: "button-clean",
-      hasCooldown: true
-    },
-    { 
-      icon: Moon, 
-      label: "Sleep", 
-      actionKey: "feed" as const,
-      onClick: onSleep, 
-      cooldown: 0,
-      reward: PET_ACTIONS.sleep.coinReward,
-      testId: "button-sleep",
-      hasCooldown: false
-    },
-  ];
+    [countdowns, disabled, onAction]
+  );
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {actions.map((action) => {
-        const isOnCooldown = action.cooldown > 0;
-        const disabled = isOnCooldown || isLoading;
-        
+    <div className="grid grid-cols-4 gap-3 w-full" data-testid="action-buttons">
+      {ACTIONS.map(({ id, label, icon: Icon, color, bg }) => {
+        const cd = countdowns[id];
+        const isReady = cd === 0;
+        const isActive = lastPressed === id;
+
         return (
-          <Button
-            key={action.label}
-            variant={action.label === "Sleep" ? "secondary" : "default"}
-            size="lg"
-            className="h-16 gap-2 rounded-xl active-elevate-2 flex flex-col items-center justify-center relative overflow-hidden min-h-[44px]"
-            onClick={() => handleAction(action.onClick, disabled)}
-            disabled={disabled}
-            data-testid={action.testId}
+          <button
+            key={id}
+            onClick={() => handleAction(id)}
+            disabled={!isReady || disabled}
+            data-testid={`action-${id}`}
+            className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all duration-150 cursor-pointer
+              ${isReady && !disabled
+                ? `${bg} ${color} border-transparent active:scale-95`
+                : "bg-muted text-muted-foreground border-transparent cursor-not-allowed opacity-60"
+              }`}
           >
-            {action.hasCooldown && <SparkleEffect show={showSparkles[action.actionKey]} />}
-            <div className="flex items-center gap-2">
-              <action.icon className="w-5 h-5" />
-              <span className="font-semibold">{action.label}</span>
-            </div>
-            {isOnCooldown && action.hasCooldown ? (
-              <span className="text-xs opacity-80" data-testid={`${action.testId}-cooldown`}>
-                {formatTime(action.cooldown)}
+            <Icon size={22} strokeWidth={2} />
+            <span className="text-xs font-semibold">{label}</span>
+            {!isReady && (
+              <span className="text-[10px] font-mono leading-none opacity-80">
+                {formatCooldown(cd)}
               </span>
-            ) : (
-              <div className="flex items-center gap-1 text-xs opacity-80">
-                <Coins className="w-3 h-3" />
-                <span data-testid={`${action.testId}-reward`}>+{action.reward}</span>
-              </div>
             )}
-          </Button>
+            {isReady && <span className="text-[10px] leading-none opacity-60">Ready!</span>}
+          </button>
         );
       })}
     </div>
