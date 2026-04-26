@@ -8,7 +8,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 const PREMIUM_KEY = "toypetme_premium";
 const GAME_STATE_KEY = "toypetme_v2";
 
-type Status = "verifying" | "success" | "error";
+type Status = "verifying" | "success" | "already_redeemed" | "error";
 
 export default function CheckoutSuccess() {
   usePageMeta({
@@ -19,7 +19,6 @@ export default function CheckoutSuccess() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const sessionId = params.get("session_id");
-  const productType = params.get("type") ?? "";
 
   const [status, setStatus] = useState<Status>("verifying");
   const [coinsAdded, setCoinsAdded] = useState(0);
@@ -39,8 +38,12 @@ export default function CheckoutSuccess() {
           return;
         }
 
-        // IMPORTANT: use productType from the server-verified Stripe session metadata,
-        // NOT the URL param — this prevents URL manipulation attacks.
+        if (data.alreadyRedeemed) {
+          setStatus("already_redeemed");
+          return;
+        }
+
+        // productType comes from server-verified Stripe session metadata — cannot be spoofed
         const verifiedType: string = data.productType ?? "";
 
         if (verifiedType === "premium") {
@@ -57,7 +60,7 @@ export default function CheckoutSuccess() {
                 localStorage.setItem(GAME_STATE_KEY, JSON.stringify(state));
               }
             } catch {
-              // silently ignore parse errors
+              // ignore parse errors — game state may not exist yet
             }
             setCoinsAdded(coins);
           }
@@ -79,6 +82,22 @@ export default function CheckoutSuccess() {
             </>
           )}
 
+          {status === "already_redeemed" && (
+            <>
+              <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-4">
+                <CheckCircle2 size={40} className="text-blue-500" />
+              </div>
+              <h1 className="text-xl font-bold">Already applied</h1>
+              <p className="text-sm text-muted-foreground">
+                This purchase has already been applied to your game. If you need help, contact{" "}
+                <a href="mailto:legal@stellarizondigitals.com" className="underline">legal@stellarizondigitals.com</a>.
+              </p>
+              <Link href="/">
+                <Button className="w-full" data-testid="button-back-to-game">Back to Game</Button>
+              </Link>
+            </>
+          )}
+
           {status === "success" && (
             <>
               <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
@@ -93,7 +112,7 @@ export default function CheckoutSuccess() {
                     <span className="font-semibold text-yellow-600 dark:text-yellow-400">Premium unlocked</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Your premium perks are now active in your browser. Enjoy the ad-free experience and exclusive cosmetics!
+                    Your premium perks are now active. Enjoy the ad-free experience and exclusive cosmetics!
                   </p>
                 </div>
               )}

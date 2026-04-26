@@ -598,6 +598,13 @@ export const DAILY_CHALLENGES: Challenge[] = [
   },
 ];
 
+// Redeemed Stripe checkout sessions — prevents replay attacks (coins being applied twice)
+export const redeemedSessions = pgTable("redeemed_sessions", {
+  sessionId: text("session_id").primaryKey(),
+  productType: text("product_type").notNull(),
+  redeemedAt: timestamp("redeemed_at").notNull().default(sql`now()`),
+});
+
 // Stat decay configuration
 export const STAT_DECAY = {
   hunger: {

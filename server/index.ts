@@ -4,6 +4,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { WebhookHandlers } from "./webhookHandlers";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const app = express();
 
@@ -58,6 +60,21 @@ app.use((req, res, next) => {
   next();
 });
 
+async function ensureAppTables() {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS redeemed_sessions (
+        session_id TEXT PRIMARY KEY,
+        product_type TEXT NOT NULL,
+        redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err: any) {
+    log(`App table init error: ${err.message}`);
+  }
+}
+
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -66,7 +83,7 @@ async function initStripe() {
   }
   try {
     log("Initialising Stripe schema...");
-    await runMigrations({ databaseUrl, schema: "stripe" });
+    await runMigrations({ databaseUrl });
     log("Stripe schema ready");
 
     const stripeSync = await getStripeSync();
@@ -83,6 +100,7 @@ async function initStripe() {
 }
 
 (async () => {
+  await ensureAppTables();
   await initStripe();
 
   const server = await registerRoutes(app);
