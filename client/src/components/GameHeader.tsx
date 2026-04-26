@@ -74,6 +74,16 @@ export default function GameHeader() {
               </div>
             )}
 
+            {/* Persistent help button — always accessible */}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setShowHelp(true)}
+              data-testid="btn-help"
+            >
+              <HelpCircle size={18} />
+            </Button>
+
             <Button
               size="icon"
               variant="ghost"

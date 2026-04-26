@@ -79,7 +79,85 @@ export default function GameHome() {
     title: "Play Free Virtual Pet Game — No Sign-Up",
     description: "Adopt a free virtual pet in ToyPetMe! Feed, play, clean, and evolve your companion through 4 stages. No sign-up needed — play instantly in your browser.",
     canonicalPath: "/",
+    ogImage: "https://toypetme.replit.app/og-image.png",
   });
+
+  useEffect(() => {
+    const videoGameSchema = {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      name: "ToyPetMe",
+      description:
+        "A free browser-based virtual pet game. Adopt, feed, play with, and evolve your pet through Baby, Kid, Teen, and Adult stages. No sign-up required.",
+      url: "https://toypetme.replit.app",
+      image: "https://toypetme.replit.app/og-image.png",
+      genre: ["Casual", "Simulation", "Pet Game"],
+      gamePlatform: "Web Browser",
+      applicationCategory: "Game",
+      operatingSystem: "Any",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      author: { "@type": "Organization", name: "Stellarizon Digitals" },
+    };
+
+    const faqSchema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Is ToyPetMe free to play?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes! ToyPetMe is completely free. No sign-up, no download, and no payment required.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How do I make my pet evolve?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Keep your pet's stats high and play daily to earn XP. Pets evolve at levels 5 (Kid), 15 (Teen), and 30 (Adult).",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Will my progress be saved?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Your pet is saved automatically in your browser's local storage. Progress stays as long as you use the same browser.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What mini-games are available?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "ToyPetMe includes three mini-games: Tap Rush, Memory Match, and Feed Frenzy. Each rewards coins you can spend on cosmetics.",
+          },
+        },
+      ],
+    };
+
+    const inject = (id: string, data: object) => {
+      let el = document.getElementById(id) as HTMLScriptElement | null;
+      if (!el) {
+        el = document.createElement("script");
+        el.id = id;
+        el.type = "application/ld+json";
+        document.head.appendChild(el);
+      }
+      el.textContent = JSON.stringify(data);
+    };
+
+    inject("jsonld-videogame", videoGameSchema);
+    inject("jsonld-faq", faqSchema);
+
+    return () => {
+      document.getElementById("jsonld-videogame")?.remove();
+      document.getElementById("jsonld-faq")?.remove();
+    };
+  }, []);
+
   const [state, setState] = useState<GameState>(() => loadState());
   const [screen, setScreen] = useState<Screen>("loading");
   const [actingAction, setActingAction] = useState<string | null>(null);

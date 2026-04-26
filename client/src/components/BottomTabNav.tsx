@@ -1,13 +1,14 @@
 import { useLocation, Link } from "wouter";
-import { Home, Gamepad2, BookOpen, Sparkles, Star } from "lucide-react";
+import { Home, Grid3X3, Gamepad2, BookOpen, Sparkles, Star } from "lucide-react";
 import AdSlot from "@/components/AdSlot";
 
 const tabs = [
-  { path: "/",            icon: Home,     label: "Home"    },
-  { path: "/minigames",   icon: Gamepad2, label: "Games"   },
-  { path: "/stories",     icon: BookOpen, label: "Stories" },
-  { path: "/dress-up",    icon: Sparkles, label: "Dress Up" },
-  { path: "/achievements",icon: Star,     label: "Awards"  },
+  { path: "/",             icon: Home,     label: "Home"    },
+  { path: "/collection",   icon: Grid3X3,  label: "Pets"    },
+  { path: "/minigames",    icon: Gamepad2, label: "Games"   },
+  { path: "/stories",      icon: BookOpen, label: "Stories" },
+  { path: "/dress-up",     icon: Sparkles, label: "Dress Up"},
+  { path: "/achievements", icon: Star,     label: "Awards"  },
 ];
 
 export default function BottomTabNav() {
@@ -31,19 +32,19 @@ export default function BottomTabNav() {
             <Link
               key={path}
               href={path}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 transition-colors ${
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-0.5 transition-colors ${
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              data-testid={`nav-${label.toLowerCase().replace(" ", "-")}`}
+              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               <Icon
-                size={20}
+                size={18}
                 className={`transition-transform ${isActive ? "scale-110" : ""}`}
                 strokeWidth={isActive ? 2.5 : 1.8}
               />
-              <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+              <span className="text-[9px] font-semibold tracking-wide leading-none">{label}</span>
             </Link>
           );
         })}
