@@ -27,15 +27,20 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 **Pages:**
 - `/` — `GameHome.tsx` — Main game screen (create pet / care for pet)
 - `/collection` — `Collection.tsx` — Pet collection + species compendium
-- `/minigames` — `MiniGamesHub.tsx` — 3 client-side mini-games (Tap Rush, Memory Match, Feed Frenzy)
+- `/minigames` — `MiniGamesHub.tsx` — 3 client-side mini-games (Tap Rush, Memory Match, Feed Frenzy with basket mechanic)
+- `/stories` — `Stories.tsx` — Pet lore/species story page (5 in-world stories, ad-monetized)
+- `/dress-up` — `DressUp.tsx` — Cosmetic hat + background customization for active pet
 - `/leaderboard` — `Leaderboard.tsx` — Rankings, high scores, recent achievements
 - `/achievements` — `Achievements.tsx` — Full achievement list with progress
 
+**Lib:**
+- `client/src/lib/usePageMeta.ts` — SEO hook for per-page title, description, Open Graph, and canonical URLs
+
 **Components:**
-- `PetDisplay.tsx` — Animated SVG pet characters with mood system and floating text effects
+- `PetDisplay.tsx` — Full-body animated SVG pet characters (100x160 viewBox) with stage-aware scaling, CSS keyframe animations (bounce/jump/spin/shimmy/sleep), blinking eyes, floating stat text, and action particles. Exports individual species body components for reuse.
 - `ActionButtons.tsx` — Feed/Play/Clean/Sleep with live cooldown timers
 - `StatsPanel.tsx` — Hunger/Happy/Energy/Cleanliness stat bars with real-time decay
-- `GameHeader.tsx` — Coins, streak, level display
+- `GameHeader.tsx` — Coins, streak, level + settings gear icon (How to Play modal, Pet Stories link, Dress Up link, Reset Game confirmation)
 - `BottomTabNav.tsx` — 5-tab navigation
 - `AdSlot.tsx` — Google AdSense-ready placeholders (banner, rectangle, leaderboard formats)
 

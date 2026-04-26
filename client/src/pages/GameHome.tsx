@@ -22,27 +22,73 @@ import {
   type Species,
 } from "@/lib/gameStorage";
 import { PET_SPECIES, PET_NAME_SUGGESTIONS } from "@/lib/petData";
-import { Plus, Share2, Trophy } from "lucide-react";
+import {
+  Plus, Share2, Trophy,
+  Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils,
+} from "lucide-react";
 
-type Screen = "loading" | "create" | "game" | "daily";
+type Screen = "loading" | "onboard" | "create" | "game" | "daily";
+
+const ONBOARD_SLIDES = [
+  {
+    Icon: Heart,
+    title: "Welcome to ToyPetMe!",
+    body: "Adopt a virtual pet and care for it every day. No sign-up needed — just play!",
+    accent: "bg-gradient-to-br from-pink-100 to-rose-100",
+    iconColor: "text-rose-500",
+    iconBg: "bg-rose-100",
+  },
+  {
+    Icon: Utensils,
+    title: "Care Every Day",
+    body: "Feed, play, clean, and rest your pet. Keep all four stats high to earn bonus coins!",
+    accent: "bg-gradient-to-br from-orange-100 to-amber-100",
+    iconColor: "text-orange-500",
+    iconBg: "bg-orange-100",
+  },
+  {
+    Icon: Gamepad2,
+    title: "Play Mini-Games",
+    body: "Tap Rush, Memory Match, and Feed Frenzy — earn coins and set records!",
+    accent: "bg-gradient-to-br from-violet-100 to-purple-100",
+    iconColor: "text-violet-500",
+    iconBg: "bg-violet-100",
+  },
+  {
+    Icon: TrendingUp,
+    title: "Evolve and Grow",
+    body: "Level up through Baby, Kid, Teen, and Adult stages. Each stage shows a whole new look!",
+    accent: "bg-gradient-to-br from-teal-100 to-cyan-100",
+    iconColor: "text-teal-600",
+    iconBg: "bg-teal-100",
+  },
+];
+
+const STAGE_MILESTONES = [
+  { stage: 0, name: "Baby", level: 1 },
+  { stage: 1, name: "Kid", level: 5 },
+  { stage: 2, name: "Teen", level: 15 },
+  { stage: 3, name: "Adult", level: 30 },
+];
+
+const ONBOARD_KEY = "toypetme_onboard";
 
 export default function GameHome() {
   const [state, setState] = useState<GameState>(() => loadState());
   const [screen, setScreen] = useState<Screen>("loading");
   const [actingAction, setActingAction] = useState<string | null>(null);
   const [dailyBonus, setDailyBonus] = useState(0);
+  const [slide, setSlide] = useState(0);
+  const [stageOpen, setStageOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // New pet creation state
   const [newPetSpecies, setNewPetSpecies] = useState<Species>("cat");
   const [newPetColor, setNewPetColor] = useState<string>("#F97316");
   const [newPetName, setNewPetName] = useState("");
 
-  // Initialize
   useEffect(() => {
     let s = loadState();
-    // Daily login check
     const { state: newState, isNew, bonus } = checkDailyLogin(s);
     if (isNew) {
       s = newState;
@@ -52,13 +98,10 @@ export default function GameHome() {
     setState(s);
 
     if (s.pets.length === 0) {
-      setScreen("create");
+      const onboardShown = localStorage.getItem(ONBOARD_KEY) === "1";
+      setScreen(onboardShown ? "create" : "onboard");
     } else {
-      if (isNew) {
-        setScreen("daily");
-      } else {
-        setScreen("game");
-      }
+      setScreen(isNew ? "daily" : "game");
     }
   }, []);
 
@@ -89,16 +132,13 @@ export default function GameHome() {
 
         if (result.evolved) {
           toast({
-            title: `✨ ${activePet.name} evolved!`,
+            title: `${activePet.name} evolved!`,
             description: "Your pet grew into a new stage!",
             duration: 4000,
           });
         }
         if (result.leveledUp) {
-          toast({
-            title: `Level Up! Now Lv ${result.pet.level}`,
-            duration: 2500,
-          });
+          toast({ title: `Level Up! Now Lv ${result.pet.level}`, duration: 2500 });
         }
         if (result.newAchievements.length > 0) {
           result.newAchievements.forEach((id) => {
@@ -133,9 +173,14 @@ export default function GameHome() {
     toast({ title: `Welcome, ${name}!`, description: "Your new pet is ready to be cared for!", duration: 3000 });
   };
 
+  const finishOnboard = () => {
+    localStorage.setItem(ONBOARD_KEY, "1");
+    setScreen("create");
+  };
+
   const handleShare = () => {
     if (!activePet) return;
-    const text = `My ${activePet.name} is Level ${activePet.level} on ToyPetMe! Come play the free virtual pet game! 🐾`;
+    const text = `My ${activePet.name} is Level ${activePet.level} on ToyPetMe! Come play the free virtual pet game!`;
     const url = "https://toypetme.replit.app";
     if (navigator.share) {
       navigator.share({ title: "ToyPetMe", text, url }).catch(() => {});
@@ -147,6 +192,7 @@ export default function GameHome() {
   };
 
   // ---- SCREENS ----
+
   if (screen === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 to-pink-50">
@@ -158,11 +204,97 @@ export default function GameHome() {
     );
   }
 
+  if (screen === "onboard") {
+    const { Icon, title, body, accent, iconColor, iconBg } = ONBOARD_SLIDES[slide];
+    const isLast = slide === ONBOARD_SLIDES.length - 1;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 p-4">
+        <div className="max-w-sm w-full space-y-5">
+          <div className={`rounded-2xl p-8 text-center space-y-5 ${accent} transition-all duration-300`}>
+            <div className={`w-20 h-20 rounded-2xl ${iconBg} mx-auto flex items-center justify-center`}>
+              <Icon size={44} className={iconColor} strokeWidth={1.5} />
+            </div>
+            <div className="space-y-2">
+              <h2
+                className="text-2xl font-black text-foreground"
+                style={{ fontFamily: "Outfit, sans-serif" }}
+              >
+                {title}
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">{body}</p>
+            </div>
+          </div>
+
+          {/* Dot progress */}
+          <div className="flex justify-center gap-2">
+            {ONBOARD_SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setSlide(i)}
+                data-testid={`onboard-dot-${i}`}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === slide ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30"
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex gap-3">
+            {slide > 0 ? (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setSlide((s) => s - 1)}
+                data-testid="button-onboard-prev"
+              >
+                Back
+              </Button>
+            ) : null}
+
+            {!isLast ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="default"
+                  className="flex-1"
+                  onClick={finishOnboard}
+                  data-testid="button-onboard-skip"
+                >
+                  Skip
+                </Button>
+                <Button
+                  size="default"
+                  className="flex-1"
+                  onClick={() => setSlide((s) => s + 1)}
+                  data-testid="button-onboard-next"
+                >
+                  Next
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="lg"
+                className="flex-1 text-base font-bold"
+                onClick={finishOnboard}
+                data-testid="button-onboard-start"
+              >
+                Adopt Your Pet!
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (screen === "daily") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 p-4">
         <div className="max-w-sm w-full text-center space-y-6">
-          <div className="text-6xl">🎁</div>
+          <div className="w-20 h-20 rounded-2xl bg-amber-100 mx-auto flex items-center justify-center">
+            <Trophy size={44} className="text-amber-500" strokeWidth={1.5} />
+          </div>
           <div>
             <h1 className="text-3xl font-black text-foreground" style={{ fontFamily: "Outfit, sans-serif" }}>
               Daily Bonus!
@@ -179,7 +311,7 @@ export default function GameHome() {
             onClick={() => setScreen("game")}
             data-testid="button-claim-daily"
           >
-            Collect & Play!
+            Collect &amp; Play!
           </Button>
         </div>
       </div>
@@ -198,7 +330,6 @@ export default function GameHome() {
             <p className="text-muted-foreground">Choose your companion and start your adventure!</p>
           </div>
 
-          {/* Species picker */}
           <div>
             <p className="text-sm font-semibold text-muted-foreground mb-2">Choose species</p>
             <div className="grid grid-cols-5 gap-2">
@@ -223,7 +354,6 @@ export default function GameHome() {
             </div>
           </div>
 
-          {/* Color picker */}
           <div>
             <p className="text-sm font-semibold text-muted-foreground mb-2">Pick a color</p>
             <div className="flex gap-3 flex-wrap">
@@ -242,7 +372,6 @@ export default function GameHome() {
             </div>
           </div>
 
-          {/* Name input */}
           <div>
             <p className="text-sm font-semibold text-muted-foreground mb-2">Name your pet</p>
             <div className="flex gap-2">
@@ -269,14 +398,10 @@ export default function GameHome() {
             </div>
           </div>
 
-          {/* Description */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex-shrink-0"
-                  style={{ background: newPetColor }}
-                />
+                <div className="w-10 h-10 rounded-full flex-shrink-0" style={{ background: newPetColor }} />
                 <div>
                   <p className="font-semibold">{speciesData.name}</p>
                   <p className="text-xs text-muted-foreground">{speciesData.description}</p>
@@ -305,10 +430,8 @@ export default function GameHome() {
       <GameHeader />
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-        {/* Ad slot */}
         <AdSlot format="banner" className="mx-auto" />
 
-        {/* Pet switcher (if multiple pets) */}
         {state.pets.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {state.pets.map((p) => (
@@ -332,40 +455,83 @@ export default function GameHome() {
           </div>
         )}
 
-        {/* Pet display */}
         {activePet && (
           <div className="flex flex-col items-center py-4">
             <PetDisplay pet={activePet} isActing={actingAction} />
           </div>
         )}
 
-        {/* XP bar */}
+        {/* XP bar + evolution guide */}
         {activePet && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-14">XP {activePet.xp}</span>
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700"
-                style={{ width: `${(activePet.xp / (activePet.level * 50)) * 100}%` }}
-              />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-14">XP {activePet.xp}</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-pink-500 rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, (activePet.xp / (activePet.level * 50)) * 100)}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground w-14 text-right">{activePet.level * 50} XP</span>
             </div>
-            <span className="text-xs text-muted-foreground w-14 text-right">{activePet.level * 50} XP</span>
+
+            {/* Collapsible evolution guide */}
+            <button
+              onClick={() => setStageOpen((o) => !o)}
+              data-testid="button-stage-guide"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {stageOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              <span>Evolution guide</span>
+            </button>
+
+            {stageOpen && (
+              <div className="grid grid-cols-4 gap-1.5" data-testid="stage-guide-grid">
+                {STAGE_MILESTONES.map(({ stage, name, level }) => {
+                  const isCurrent = activePet.stage === stage;
+                  const isUnlocked = activePet.level >= level;
+                  return (
+                    <div
+                      key={stage}
+                      data-testid={`stage-${stage}`}
+                      className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border text-center transition-all ${
+                        isCurrent
+                          ? "border-primary bg-primary/8 text-primary"
+                          : isUnlocked
+                          ? "border-border bg-card text-muted-foreground"
+                          : "border-dashed border-muted-foreground/30 text-muted-foreground/40"
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{name}</span>
+                      <span className="text-[10px]">Lv {level}</span>
+                      {isCurrent && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-primary">Now</span>
+                      )}
+                      {!isCurrent && isUnlocked && (
+                        <span className="text-[9px] text-muted-foreground">Done</span>
+                      )}
+                      {!isUnlocked && (
+                        <span className="text-[9px] text-muted-foreground/40">Locked</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Stats */}
         {activePet && <StatsPanel pet={activePet} />}
 
-        {/* Action buttons */}
         {activePet && (
           <ActionButtons
             pet={activePet}
             onAction={handleAction}
             disabled={!!actingAction}
+            showHints={state.totalActions < 4}
           />
         )}
 
-        {/* Bottom actions row */}
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -401,10 +567,8 @@ export default function GameHome() {
           )}
         </div>
 
-        {/* Mid-page ad */}
         <AdSlot format="rectangle" className="mx-auto" />
 
-        {/* SEO-friendly game info */}
         <div className="text-center py-2">
           <p className="text-xs text-muted-foreground">
             ToyPetMe — Free virtual pet game. No sign-up required.

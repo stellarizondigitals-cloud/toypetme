@@ -326,10 +326,63 @@
   100% { opacity: 0; transform: translateX(-50%) translateY(-40px); }
 }
 
+@keyframes floatUpFade {
+  0%   { opacity: 0.9; transform: translateY(0px) scale(1.1); }
+  100% { opacity: 0;   transform: translateY(-36px) scale(0.5); }
+}
+
 @keyframes petBounce {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+  50%       { transform: translateY(-7px); }
 }
+
+@keyframes petJump {
+  0%   { transform: translateY(0px)   scale(1); }
+  25%  { transform: translateY(-24px) scale(1.06); }
+  55%  { transform: translateY(-10px) scale(0.97); }
+  75%  { transform: translateY(-16px) scale(1.03); }
+  100% { transform: translateY(0px)   scale(1); }
+}
+
+@keyframes petSpin {
+  0%   { transform: rotate(0deg)   scale(1); }
+  20%  { transform: rotate(72deg)  scale(1.1); }
+  40%  { transform: rotate(144deg) scale(1); }
+  60%  { transform: rotate(216deg) scale(1.1); }
+  80%  { transform: rotate(288deg) scale(1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes petShimmy {
+  0%,100% { transform: translateX(0px)  rotate(0deg); }
+  12%     { transform: translateX(-7px) rotate(-4deg); }
+  25%     { transform: translateX(7px)  rotate(4deg); }
+  37%     { transform: translateX(-5px) rotate(-3deg); }
+  50%     { transform: translateX(5px)  rotate(3deg); }
+  62%     { transform: translateX(-3px) rotate(-2deg); }
+  75%     { transform: translateX(3px)  rotate(2deg); }
+  87%     { transform: translateX(-1px) rotate(-1deg); }
+}
+
+@keyframes petSleep {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%      { transform: translateY(4px)  rotate(-2deg); }
+  70%      { transform: translateY(4px)  rotate(2deg); }
+}
+
+@keyframes petPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.15); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.pet-anim-bounce { animation: petBounce 2s ease-in-out infinite; }
+.pet-anim-jump   { animation: petJump  0.65s ease-out; }
+.pet-anim-spin   { animation: petSpin  0.85s ease-in-out; }
+.pet-anim-shimmy { animation: petShimmy 0.7s ease-in-out; }
+.pet-anim-sleep  { animation: petSleep  2.4s ease-in-out infinite; }
+.pet-anim-pop    { animation: petPop    0.4s ease-out; }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
