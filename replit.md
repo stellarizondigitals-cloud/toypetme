@@ -3,19 +3,22 @@
 ## Overview
 ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, delivered as a mobile-first web application. No sign-up required — players visit and play instantly. Progress is saved in the browser (localStorage). The game features 5 unique pet species with 4 evolution stages each, a stat-based care system (hunger, happiness, energy, cleanliness), 3 client-side mini-games, a daily streak system, 27 achievements, social sharing, and ad slots for monetization. Designed for maximum SEO and viral reach.
 
-## Architecture: Static-First, Zero Backend Complexity
+## Architecture: Client-First + Stripe Payments
 
 ### Key Principle
 - **100% client-side game logic** — all state stored in `localStorage` (`toypetme_v2` key)
 - **No login/auth required** — players play immediately
-- **No database** — no PostgreSQL, no Supabase, no external services
-- **Minimal server** — Express only serves the Vite frontend (no DB routes, no auth routes)
-- **Free hosting** — Replit subscription only, no extra costs
+- **Stripe payments** — optional £0.99 Premium + coin packs via Stripe guest checkout (no account needed)
+- **Premium stored in localStorage** (`toypetme_premium = "1"`) after verified Stripe checkout
+- **Stripe integration** managed by Replit's native Stripe connector + `stripe-replit-sync`
 
-### Server (Simplified)
-- `server/index.ts` — Minimal Express server, just serves Vite
-- `server/routes.ts` — Single `/api/health` endpoint only
-- No database, no sessions, no Passport, no Stripe
+### Server
+- `server/index.ts` — Express server with Stripe webhook (registered BEFORE express.json), Stripe schema init
+- `server/routes.ts` — `/api/health`, `/api/products`, `/api/checkout/session`, `/api/checkout/verify`
+- `server/stripeClient.ts` — Fetches Stripe credentials from Replit connector API
+- `server/webhookHandlers.ts` — Processes Stripe webhooks via stripe-replit-sync
+- `server/db.ts` — Drizzle ORM client (PostgreSQL, for stripe-replit-sync schema)
+- `scripts/seed-products.ts` — Creates ToyPetMe products in Stripe (run manually)
 
 ### Client Architecture
 **Technology:** React 18 + TypeScript + Vite + Wouter + Tailwind CSS + shadcn/ui
@@ -32,6 +35,12 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - `/dress-up` — `DressUp.tsx` — Cosmetic hat + background customization for active pet
 - `/leaderboard` — `Leaderboard.tsx` — Rankings, high scores, recent achievements
 - `/achievements` — `Achievements.tsx` — Full achievement list with progress
+- `/shop` — `Shop.tsx` — Premium (£0.99) + coin packs (£0.99/£1.99/£4.99) via Stripe guest checkout
+- `/checkout/success` — `CheckoutSuccess.tsx` — Verifies Stripe session, activates premium/coins in localStorage
+- `/checkout/cancel` — `CheckoutCancel.tsx` — Payment cancelled page
+- `/refund-policy` — `RefundPolicy.tsx` — Full 14-day refund policy (GDPR/UK Consumer Rights compliant)
+- `/privacy` — `PrivacyPolicy.tsx` — Privacy policy (includes Stripe payment data section)
+- `/terms` — `Terms.tsx` — Terms of Service (includes in-app purchases + refund rights)
 
 **Lib:**
 - `client/src/lib/usePageMeta.ts` — SEO hook for per-page title, description, Open Graph, and canonical URLs

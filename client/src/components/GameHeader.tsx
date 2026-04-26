@@ -2,10 +2,13 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   Flame, Coins, Settings, BookOpen, Sparkles, RotateCcw, X, HelpCircle,
-  Utensils, Dumbbell, BedDouble, TrendingUp, AlertTriangle,
+  Utensils, Dumbbell, BedDouble, TrendingUp, AlertTriangle, Crown, ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { loadState } from "@/lib/gameStorage";
+
+const PREMIUM_KEY = "toypetme_premium";
 
 const HOW_TO_PLAY: { Icon: typeof Utensils; title: string; desc: string }[] = [
   { Icon: Utensils,    title: "Feed your pet",   desc: "Keep hunger high — pets get sad when hungry! (5 min cooldown)" },
@@ -23,6 +26,7 @@ export default function GameHeader() {
   const [showHelp, setShowHelp] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [, setLocation] = useLocation();
+  const hasPremium = localStorage.getItem(PREMIUM_KEY) === "1";
 
   const handleReset = () => {
     localStorage.removeItem("toypetme_v2");
@@ -46,6 +50,13 @@ export default function GameHeader() {
           </div>
 
           <div className="flex items-center gap-2">
+            {hasPremium && (
+              <Badge className="bg-yellow-400 text-yellow-900 gap-1 px-2" data-testid="premium-badge">
+                <Crown size={11} />
+                Premium
+              </Badge>
+            )}
+
             {state.dailyStreak > 0 && (
               <div
                 className="flex items-center gap-1 bg-orange-50 text-orange-600 rounded-full px-2 py-0.5"
@@ -109,6 +120,15 @@ export default function GameHeader() {
               >
                 <HelpCircle size={15} className="text-primary flex-shrink-0" />
                 How to Play
+              </button>
+
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-foreground hover-elevate"
+                onClick={() => { setMenuOpen(false); setLocation("/shop"); }}
+                data-testid="btn-nav-shop"
+              >
+                <ShoppingBag size={15} className="text-amber-500 flex-shrink-0" />
+                Shop &amp; Premium
               </button>
 
               <button

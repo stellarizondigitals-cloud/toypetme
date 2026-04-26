@@ -10,6 +10,10 @@ import Leaderboard from "@/pages/Leaderboard";
 import Achievements from "@/pages/Achievements";
 import Stories from "@/pages/Stories";
 import DressUp from "@/pages/DressUp";
+import Shop from "@/pages/Shop";
+import CheckoutSuccess from "@/pages/CheckoutSuccess";
+import CheckoutCancel from "@/pages/CheckoutCancel";
+import RefundPolicy from "@/pages/RefundPolicy";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
 import NotFound from "@/pages/not-found";
@@ -27,6 +31,10 @@ export default function App() {
           <Route path="/achievements" component={Achievements} />
           <Route path="/stories" component={Stories} />
           <Route path="/dress-up" component={DressUp} />
+          <Route path="/shop" component={Shop} />
+          <Route path="/checkout/success" component={CheckoutSuccess} />
+          <Route path="/checkout/cancel" component={CheckoutCancel} />
+          <Route path="/refund-policy" component={RefundPolicy} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={Terms} />
           <Route component={NotFound} />
