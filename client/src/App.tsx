@@ -8,7 +8,7 @@ import Collection from "@/pages/Collection";
 import MiniGamesHub from "@/pages/MiniGamesHub";
 import Leaderboard from "@/pages/Leaderboard";
 import Achievements from "@/pages/Achievements";
-import Stories from "@/pages/Stories";
+import Stories, { StoryDetail } from "@/pages/Stories";
 import DressUp from "@/pages/DressUp";
 import Shop from "@/pages/Shop";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
@@ -29,6 +29,7 @@ export default function App() {
           <Route path="/minigames" component={MiniGamesHub} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/achievements" component={Achievements} />
+          <Route path="/stories/:slug" component={StoryDetail} />
           <Route path="/stories" component={Stories} />
           <Route path="/dress-up" component={DressUp} />
           <Route path="/shop" component={Shop} />

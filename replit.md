@@ -31,8 +31,9 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - `/` — `GameHome.tsx` — Main game screen (create pet / care for pet)
 - `/collection` — `Collection.tsx` — Pet collection + species compendium
 - `/minigames` — `MiniGamesHub.tsx` — 3 client-side mini-games (Tap Rush, Memory Match, Feed Frenzy with basket mechanic)
-- `/stories` — `Stories.tsx` — Pet lore/species story page (5 in-world stories, ad-monetized)
-- `/dress-up` — `DressUp.tsx` — Cosmetic hat + background customization for active pet
+- `/stories` — `Stories.tsx` — Pet lore/species story page (5 in-world stories with ads between every card)
+- `/stories/:slug` — `StoryDetail` (exported from Stories.tsx) — Per-species story page with unique SEO meta
+- `/dress-up` — `DressUp.tsx` — Full dress-up: 7 hats, 7 outfits, 5 accessories, 6 backgrounds — SVG-layered on pet; wide-screen sidebar ad
 - `/leaderboard` — `Leaderboard.tsx` — Rankings, high scores, recent achievements
 - `/achievements` — `Achievements.tsx` — Full achievement list with progress
 - `/shop` — `Shop.tsx` — Premium (£0.99) + coin packs (£0.99/£1.99/£4.99) via Stripe guest checkout
@@ -44,9 +45,10 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 
 **Lib:**
 - `client/src/lib/usePageMeta.ts` — SEO hook for per-page title, description, Open Graph, and canonical URLs
+- `client/index.html` — VideoGame JSON-LD + ItemList JSON-LD for 5 pet species
 
 **Components:**
-- `PetDisplay.tsx` — Full-body animated SVG pet characters (100x160 viewBox) with stage-aware scaling, CSS keyframe animations (bounce/jump/spin/shimmy/sleep), blinking eyes, floating stat text, and action particles. Exports individual species body components for reuse.
+- `PetDisplay.tsx` — Full-body animated SVG pet characters (100x160 viewBox) with stage-aware scaling, CSS keyframe animations (bounce/jump/spin/shimmy/sleep), blinking eyes, floating stat text, action particles. Accepts optional `dressUp` prop and renders DressUpOverlay SVG layers (hats, outfits, accessories) directly on the pet SVG. Exports DressUpState type and individual species SVGs.
 - `ActionButtons.tsx` — Feed/Play/Clean/Sleep with live cooldown timers
 - `StatsPanel.tsx` — Hunger/Happy/Energy/Cleanliness stat bars with real-time decay
 - `GameHeader.tsx` — Coins, streak, level + settings gear icon (How to Play modal, Pet Stories link, Dress Up link, Reset Game confirmation)

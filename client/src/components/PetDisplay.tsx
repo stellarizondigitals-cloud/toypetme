@@ -3,10 +3,174 @@ import type { Pet } from "@/lib/gameStorage";
 import { getHealth, applyDecay } from "@/lib/gameStorage";
 import { getStageName } from "@/lib/petData";
 
+export interface DressUpState {
+  hat: string;
+  outfit: string;
+  accessory: string;
+  bg: string;
+}
+
 interface PetDisplayProps {
   pet: Pet;
   isActing?: string | null;
   size?: number;
+  dressUp?: Partial<DressUpState>;
+}
+
+// SVG dress-up overlays — all coords in 100×160 viewBox space
+function DressUpOverlay({ hat, outfit, accessory, sc }: { hat: string; outfit: string; accessory: string; sc: number }) {
+  return (
+    <g transform={`translate(50,82) scale(${sc}) translate(-50,-82)`}>
+      {/* ── HATS ── */}
+      {hat === "bow" && (
+        <g>
+          <ellipse cx="42" cy="17" rx="9" ry="5.5" fill="#EC4899" transform="rotate(-22,42,17)" />
+          <ellipse cx="58" cy="17" rx="9" ry="5.5" fill="#EC4899" transform="rotate(22,58,17)" />
+          <circle cx="50" cy="17" r="4.5" fill="#BE185D" />
+        </g>
+      )}
+      {hat === "party" && (
+        <g>
+          <polygon points="50,3 36,26 64,26" fill="#F59E0B" />
+          <circle cx="44" cy="16" r="2" fill="#10B981" />
+          <circle cx="52" cy="10" r="2" fill="#EF4444" />
+          <circle cx="56" cy="19" r="2" fill="#8B5CF6" />
+          <line x1="36" y1="26" x2="64" y2="26" stroke="#D97706" strokeWidth="2" />
+        </g>
+      )}
+      {hat === "cap" && (
+        <g>
+          <path d="M 33,27 Q 33,13 50,13 Q 67,13 67,27 Z" fill="#3B82F6" />
+          <rect x="28" y="25" width="30" height="5" rx="3" fill="#1D4ED8" />
+          <rect x="45" y="16" width="10" height="6" rx="1" fill="#1E40AF" />
+        </g>
+      )}
+      {hat === "crown" && (
+        <g>
+          <polygon points="36,25 36,13 43,20 50,9 57,20 64,13 64,25" fill="#F59E0B" />
+          <rect x="36" y="23" width="28" height="4" rx="1" fill="#D97706" />
+          <circle cx="43" cy="24" r="2.2" fill="#EF4444" />
+          <circle cx="50" cy="24" r="2.2" fill="#8B5CF6" />
+          <circle cx="57" cy="24" r="2.2" fill="#10B981" />
+        </g>
+      )}
+      {hat === "tophat" && (
+        <g>
+          <rect x="38" y="5" width="24" height="22" rx="2" fill="#1C1917" />
+          <rect x="28" y="25" width="44" height="5" rx="2.5" fill="#0C0A09" />
+          <rect x="40" y="7" width="20" height="4" rx="1" fill="#292524" opacity="0.6" />
+        </g>
+      )}
+      {hat === "wizard" && (
+        <g>
+          <polygon points="50,1 34,28 66,28" fill="#4C1D95" />
+          <rect x="30" y="25" width="40" height="5" rx="2" fill="#6D28D9" />
+          <polygon points="50,7 51.3,10.8 55.5,10.8 52.1,13.2 53.4,17 50,14.6 46.6,17 47.9,13.2 44.5,10.8 48.7,10.8" fill="#FCD34D" />
+        </g>
+      )}
+      {hat === "halo" && (
+        <g>
+          <ellipse cx="50" cy="7" rx="20" ry="5.5" fill="none" stroke="#FCD34D" strokeWidth="4" opacity="0.95" />
+          <ellipse cx="50" cy="7" rx="20" ry="5.5" fill="none" stroke="#FEF08A" strokeWidth="1.5" opacity="0.6" />
+        </g>
+      )}
+
+      {/* ── OUTFITS ── */}
+      {outfit === "space" && (
+        <g>
+          <rect x="30" y="78" width="40" height="42" rx="12" fill="#94A3B8" opacity="0.75" />
+          <ellipse cx="50" cy="78" rx="17" ry="6" fill="#64748B" />
+          <rect x="41" y="85" width="18" height="12" rx="3" fill="#475569" />
+          <circle cx="50" cy="91" r="3" fill="#38BDF8" />
+        </g>
+      )}
+      {outfit === "witch" && (
+        <g>
+          <rect x="28" y="78" width="44" height="44" rx="12" fill="#1C1917" opacity="0.82" />
+          <polygon points="34,78 50,93 66,78 60,78 50,89 40,78" fill="#7C3AED" />
+          <path d="M 28,120 L 35,112 L 42,120 L 49,112 L 56,120 L 63,112 L 72,120" stroke="#7C3AED" strokeWidth="2.5" fill="none" />
+        </g>
+      )}
+      {outfit === "knight" && (
+        <g>
+          <rect x="29" y="78" width="42" height="44" rx="10" fill="#94A3B8" />
+          <line x1="50" y1="78" x2="50" y2="122" stroke="#64748B" strokeWidth="2.5" />
+          <line x1="29" y1="98" x2="71" y2="98" stroke="#64748B" strokeWidth="2.5" />
+          <rect x="17" y="80" width="14" height="14" rx="5" fill="#CBD5E1" />
+          <rect x="69" y="80" width="14" height="14" rx="5" fill="#CBD5E1" />
+          <circle cx="50" cy="88" r="4" fill="#64748B" />
+        </g>
+      )}
+      {outfit === "flower" && (
+        <g>
+          <rect x="28" y="78" width="44" height="44" rx="12" fill="#FDA4AF" opacity="0.8" />
+          <circle cx="41" cy="93" r="5" fill="#FBBF24" />
+          <circle cx="59" cy="93" r="5" fill="#A78BFA" />
+          <circle cx="50" cy="106" r="5" fill="#34D399" />
+          <circle cx="37" cy="93" r="3" fill="#FEF3C7" opacity="0.85" />
+          <circle cx="45" cy="93" r="3" fill="#FEF3C7" opacity="0.85" />
+          <circle cx="55" cy="93" r="3" fill="#EDE9FE" opacity="0.85" />
+          <circle cx="63" cy="93" r="3" fill="#EDE9FE" opacity="0.85" />
+        </g>
+      )}
+      {outfit === "sailor" && (
+        <g>
+          <rect x="30" y="80" width="40" height="42" rx="10" fill="#1E3A8A" opacity="0.78" />
+          <polygon points="33,78 50,96 67,78 62,78 50,91 38,78" fill="white" opacity="0.9" />
+          <circle cx="50" cy="89" r="2.5" fill="#FCD34D" />
+          <circle cx="50" cy="100" r="2.5" fill="#FCD34D" />
+          <circle cx="50" cy="111" r="2.5" fill="#FCD34D" />
+          <rect x="30" y="96" width="40" height="3" fill="#DC2626" />
+        </g>
+      )}
+      {outfit === "ninja" && (
+        <g>
+          <rect x="28" y="78" width="44" height="44" rx="10" fill="#111827" opacity="0.88" />
+          <rect x="28" y="96" width="44" height="6" fill="#6B7280" />
+          <path d="M 28,78 Q 50,72 72,78" fill="#111827" opacity="0.88" />
+        </g>
+      )}
+
+      {/* ── ACCESSORIES ── */}
+      {accessory === "glasses" && (
+        <g>
+          <circle cx="40" cy="46" r="7.5" fill="none" stroke="#374151" strokeWidth="1.8" />
+          <circle cx="60" cy="46" r="7.5" fill="none" stroke="#374151" strokeWidth="1.8" />
+          <line x1="47.5" y1="46" x2="52.5" y2="46" stroke="#374151" strokeWidth="1.8" />
+          <line x1="32.5" y1="44" x2="32.5" y2="47" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="67.5" y1="44" x2="67.5" y2="47" stroke="#374151" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="40" cy="46" r="7" fill="#93C5FD" opacity="0.28" />
+          <circle cx="60" cy="46" r="7" fill="#93C5FD" opacity="0.28" />
+        </g>
+      )}
+      {accessory === "necklace" && (
+        <g>
+          <path d="M 35,78 Q 50,87 65,78" fill="none" stroke="#D4AF37" strokeWidth="2" />
+          <polygon points="50,83 48,89 50,91 52,89" fill="#06B6D4" />
+          <circle cx="50" cy="91" r="2" fill="#0891B2" />
+        </g>
+      )}
+      {accessory === "wand" && (
+        <g>
+          <line x1="76" y1="82" x2="69" y2="108" stroke="#92400E" strokeWidth="3" strokeLinecap="round" />
+          <polygon points="76,79 77.5,83.5 82.5,83.5 78.4,86.4 79.9,91 76,88.1 72.1,91 73.6,86.4 69.5,83.5 74.5,83.5" fill="#FCD34D" />
+          <circle cx="84" cy="75" r="2" fill="#FCD34D" opacity="0.8" />
+          <circle cx="87" cy="82" r="1.3" fill="#A78BFA" opacity="0.7" />
+          <circle cx="80" cy="71" r="1.3" fill="#FCA5A5" opacity="0.7" />
+        </g>
+      )}
+      {accessory === "aura" && (
+        <g>
+          <ellipse cx="50" cy="95" rx="40" ry="52" fill="none" stroke="#8B5CF6" strokeWidth="2.5" opacity="0.5" />
+          <ellipse cx="50" cy="95" rx="40" ry="52" fill="none" stroke="#C4B5FD" strokeWidth="1" opacity="0.35" />
+          <circle cx="10" cy="95" r="3" fill="#8B5CF6" opacity="0.7" />
+          <circle cx="90" cy="95" r="3" fill="#8B5CF6" opacity="0.7" />
+          <circle cx="50" cy="43" r="3" fill="#8B5CF6" opacity="0.7" />
+          <circle cx="50" cy="147" r="3" fill="#8B5CF6" opacity="0.7" />
+        </g>
+      )}
+    </g>
+  );
 }
 
 type Mood = "happy" | "neutral" | "sad" | "tired";
@@ -424,7 +588,7 @@ const moodLabel: Record<Mood, string> = {
   tired:   "Very sleepy...",
 };
 
-export default function PetDisplay({ pet, isActing, size = 180 }: PetDisplayProps) {
+export default function PetDisplay({ pet, isActing, size = 180, dressUp }: PetDisplayProps) {
   const [animClass, setAnimClass] = useState("pet-anim-bounce");
   const [blinking, setBlinking] = useState(false);
   const [floatingText, setFloatingText] = useState<{ text: string; key: number } | null>(null);
@@ -540,6 +704,14 @@ export default function PetDisplay({ pet, isActing, size = 180 }: PetDisplayProp
             {pet.species === "dragon"  && <DragonBody  {...bodyProps} />}
             {pet.species === "bunny"   && <BunnyBody   {...bodyProps} />}
             {pet.species === "axolotl" && <AxolotlBody {...bodyProps} />}
+            {dressUp && (
+              <DressUpOverlay
+                hat={dressUp.hat ?? "none"}
+                outfit={dressUp.outfit ?? "none"}
+                accessory={dressUp.accessory ?? "none"}
+                sc={STAGE_SCALE[stage] ?? 1}
+              />
+            )}
           </svg>
 
           {/* Action particles */}
