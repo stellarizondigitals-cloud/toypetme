@@ -39,11 +39,15 @@ export default function CheckoutSuccess() {
           return;
         }
 
-        if (productType === "premium") {
+        // IMPORTANT: use productType from the server-verified Stripe session metadata,
+        // NOT the URL param — this prevents URL manipulation attacks.
+        const verifiedType: string = data.productType ?? "";
+
+        if (verifiedType === "premium") {
           localStorage.setItem(PREMIUM_KEY, "1");
           setIsPremium(true);
-        } else if (productType.startsWith("coins_")) {
-          const coins = parseInt(productType.replace("coins_", ""), 10) || 0;
+        } else if (verifiedType.startsWith("coins_")) {
+          const coins = parseInt(verifiedType.replace("coins_", ""), 10) || 0;
           if (coins > 0) {
             try {
               const raw = localStorage.getItem(GAME_STATE_KEY);
@@ -61,7 +65,7 @@ export default function CheckoutSuccess() {
         setStatus("success");
       })
       .catch(() => setStatus("error"));
-  }, [sessionId, productType]);
+  }, [sessionId]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
