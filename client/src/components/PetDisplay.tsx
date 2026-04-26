@@ -68,6 +68,15 @@ function DressUpOverlay({ hat, outfit, accessory, sc }: { hat: string; outfit: s
           <polygon points="50,7 51.3,10.8 55.5,10.8 52.1,13.2 53.4,17 50,14.6 46.6,17 47.9,13.2 44.5,10.8 48.7,10.8" fill="#FCD34D" />
         </g>
       )}
+      {hat === "pirate" && (
+        <g>
+          <rect x="33" y="17" width="34" height="6" rx="3" fill="#292524" />
+          <path d="M 38,17 L 38,6 Q 50,1 62,6 L 62,17 Z" fill="#1C1917" />
+          <rect x="44" y="7" width="12" height="9" rx="1" fill="#292524" />
+          <path d="M 44,11 L 56,11 M 50,7 L 50,16" stroke="#F5F5F4" strokeWidth="1.5" />
+          <circle cx="50" cy="11" r="1.5" fill="#DC2626" />
+        </g>
+      )}
       {hat === "halo" && (
         <g>
           <ellipse cx="50" cy="7" rx="20" ry="5.5" fill="none" stroke="#FCD34D" strokeWidth="4" opacity="0.95" />
@@ -573,6 +582,17 @@ const ACTION_COLORS: Record<string, string> = {
   clean: "#06B6D4",
   sleep: "#6366F1",
 };
+const MOOD_PARTICLES: Record<string, { syms: string[]; color: string }> = {
+  happy:  { syms: ["♥", "♥", "✦"], color: "#EC4899" },
+  sad:    { syms: ["·", "˙", "·"], color: "#94A3B8" },
+  tired:  { syms: ["z", "Z", "z"], color: "#818CF8" },
+};
+const MOOD_IDLE_ANIM: Record<string, string> = {
+  happy:   "pet-anim-bounce",
+  neutral: "pet-anim-bounce",
+  sad:     "pet-anim-sad-droop",
+  tired:   "pet-anim-sleep",
+};
 
 // ── MAIN EXPORT ────────────────────────────────────────────────────────────
 const moodColors: Record<Mood, string> = {
@@ -593,8 +613,10 @@ export default function PetDisplay({ pet, isActing, size = 180, dressUp }: PetDi
   const [blinking, setBlinking] = useState(false);
   const [floatingText, setFloatingText] = useState<{ text: string; key: number } | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [moodParticles, setMoodParticles] = useState<Particle[]>([]);
   const blinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const moodParticleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Blinking system
   useEffect(() => {
@@ -611,10 +633,36 @@ export default function PetDisplay({ pet, isActing, size = 180, dressUp }: PetDi
     };
   }, []);
 
+  // Mood-based ambient particles (hearts, tears, ZZZ)
+  useEffect(() => {
+    const decayed = applyDecay(pet);
+    const m = getMood(decayed);
+    const moodPInfo = MOOD_PARTICLES[m];
+    if (!moodPInfo || isActing) {
+      if (moodParticleIntervalRef.current) clearInterval(moodParticleIntervalRef.current);
+      setMoodParticles([]);
+      return;
+    }
+    moodParticleIntervalRef.current = setInterval(() => {
+      if (isActing) return;
+      const newPs: Particle[] = Array.from({ length: 2 }, (_, i) => ({
+        id: Date.now() + i,
+        x: 20 + Math.random() * 60,
+        y: 5 + Math.random() * 40,
+        symbol: moodPInfo.syms[i % moodPInfo.syms.length],
+      }));
+      setMoodParticles(newPs);
+      setTimeout(() => setMoodParticles([]), 1100);
+    }, 3500);
+    return () => { if (moodParticleIntervalRef.current) clearInterval(moodParticleIntervalRef.current); };
+  }, [pet, isActing]);
+
   // Action animation & floating text
   useEffect(() => {
+    const decayed = applyDecay(pet);
+    const currentMood = getMood(decayed);
     if (!isActing) {
-      setAnimClass("pet-anim-bounce");
+      setAnimClass(MOOD_IDLE_ANIM[currentMood] ?? "pet-anim-bounce");
       setParticles([]);
       return;
     }
@@ -651,7 +699,7 @@ export default function PetDisplay({ pet, isActing, size = 180, dressUp }: PetDi
     const t1 = setTimeout(() => setFloatingText(null), 1600);
     const t2 = setTimeout(() => setParticles([]), 900);
     const t3 = setTimeout(() => {
-      if (isActing !== "sleep") setAnimClass("pet-anim-bounce");
+      if (isActing !== "sleep") setAnimClass(MOOD_IDLE_ANIM[currentMood] ?? "pet-anim-bounce");
     }, durations[isActing] ?? 700);
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
@@ -724,6 +772,22 @@ export default function PetDisplay({ pet, isActing, size = 180, dressUp }: PetDi
                 top: `${p.y}%`,
                 color: ACTION_COLORS[isActing ?? ""] ?? "#8B5CF6",
                 animation: "floatUpFade 0.85s ease-out forwards",
+              }}
+            >
+              {p.symbol}
+            </div>
+          ))}
+          {/* Ambient mood particles */}
+          {moodParticles.map((p) => (
+            <div
+              key={p.id}
+              className="absolute pointer-events-none text-xs"
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                color: MOOD_PARTICLES[mood]?.color ?? "#8B5CF6",
+                animation: "floatUpFade 1.1s ease-out forwards",
+                opacity: 0.85,
               }}
             >
               {p.symbol}

@@ -88,8 +88,8 @@ export default function Shop() {
     }
   };
 
-  const premiumProduct = products.find((p) => p.metadata?.type === "premium");
-  const coinProducts = products.filter((p) => p.metadata?.type === "coins");
+  const premiumProduct = products.find((p) => p.metadata?.productType === "premium");
+  const coinProducts = products.filter((p) => p.metadata?.productType?.startsWith("coins_"));
 
   const formatPrice = (amount: number, currency: string) => {
     const symbol = currency === "gbp" ? "£" : currency === "usd" ? "$" : "€";
@@ -181,7 +181,7 @@ export default function Shop() {
                 </p>
               )}
               {coinProducts.map((product) => {
-                const coins = parseInt(product.metadata?.coins ?? "0", 10);
+                const coins = parseInt((product.metadata?.productType ?? "coins_0").replace("coins_", ""), 10);
                 const info = COIN_ICONS[product.unit_amount] ?? { label: "Coin Pack", badge: undefined };
                 return (
                   <Card key={product.id} className="flex-row">

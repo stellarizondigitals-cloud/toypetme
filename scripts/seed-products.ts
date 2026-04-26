@@ -4,25 +4,25 @@ const PRODUCTS = [
   {
     name: 'ToyPetMe Premium',
     description: 'One-time unlock: remove ads, unlock exclusive cosmetics, double daily coins, and get premium badge forever.',
-    metadata: { type: 'premium' },
+    metadata: { productType: 'premium' },
     price: { unit_amount: 99, currency: 'gbp' },
   },
   {
     name: 'Coin Pack — 500 Coins',
     description: 'Instantly add 500 coins to your ToyPetMe wallet to spend on food, toys, and cosmetics.',
-    metadata: { type: 'coins', coins: '500' },
+    metadata: { productType: 'coins_500' },
     price: { unit_amount: 99, currency: 'gbp' },
   },
   {
     name: 'Coin Pack — 1,500 Coins',
     description: 'Best value: instantly add 1,500 coins to your ToyPetMe wallet.',
-    metadata: { type: 'coins', coins: '1500' },
+    metadata: { productType: 'coins_1500' },
     price: { unit_amount: 199, currency: 'gbp' },
   },
   {
     name: 'Coin Pack — 5,000 Coins',
     description: 'Ultimate bundle: instantly add 5,000 coins to your ToyPetMe wallet.',
-    metadata: { type: 'coins', coins: '5000' },
+    metadata: { productType: 'coins_5000' },
     price: { unit_amount: 499, currency: 'gbp' },
   },
 ];
@@ -35,8 +35,13 @@ async function createProducts() {
     for (const def of PRODUCTS) {
       const existing = await stripe.products.search({ query: `name:'${def.name}' AND active:'true'` });
       if (existing.data.length > 0) {
-        console.log(`SKIP — already exists: ${def.name} (${existing.data[0].id})`);
-        const prices = await stripe.prices.list({ product: existing.data[0].id, active: true });
+        const prod = existing.data[0];
+        console.log(`SKIP — already exists: ${def.name} (${prod.id})`);
+        if (prod.metadata?.productType !== def.metadata.productType) {
+          await stripe.products.update(prod.id, { metadata: def.metadata });
+          console.log(`  UPDATED metadata productType → ${def.metadata.productType}`);
+        }
+        const prices = await stripe.prices.list({ product: prod.id, active: true });
         if (prices.data.length > 0) console.log(`       price: ${prices.data[0].id} (£${(prices.data[0].unit_amount! / 100).toFixed(2)})`);
         continue;
       }

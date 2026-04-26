@@ -27,6 +27,7 @@ const HATS: HatItem[] = [
   { id: "party",  label: "Party",   color: "bg-yellow-400", initial: "Pa", levelRequired: 1  },
   { id: "cap",    label: "Cap",     color: "bg-blue-400",   initial: "Ca", levelRequired: 3  },
   { id: "crown",  label: "Crown",   color: "bg-amber-400",  initial: "Cr", levelRequired: 5  },
+  { id: "pirate", label: "Pirate",  color: "bg-stone-700",  initial: "Pi", levelRequired: 8  },
   { id: "tophat", label: "Top Hat", color: "bg-zinc-800",   initial: "TH", levelRequired: 10 },
   { id: "wizard", label: "Wizard",  color: "bg-indigo-500", initial: "Wz", levelRequired: 15 },
   { id: "halo",   label: "Halo",    color: "bg-sky-300",    initial: "Ha", levelRequired: 20 },

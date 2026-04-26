@@ -24,7 +24,7 @@ import {
 import { PET_SPECIES, PET_NAME_SUGGESTIONS } from "@/lib/petData";
 import {
   Plus, Share2, Trophy,
-  Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils,
+  Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils, Sparkles,
 } from "lucide-react";
 import { usePageMeta } from "@/lib/usePageMeta";
 
@@ -164,6 +164,7 @@ export default function GameHome() {
   const [dailyBonus, setDailyBonus] = useState(0);
   const [slide, setSlide] = useState(0);
   const [stageOpen, setStageOpen] = useState(false);
+  const [evolutionModal, setEvolutionModal] = useState<{ petName: string; stageName: string } | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -215,11 +216,9 @@ export default function GameHome() {
         });
 
         if (result.evolved) {
-          toast({
-            title: `${activePet.name} evolved!`,
-            description: "Your pet grew into a new stage!",
-            duration: 4000,
-          });
+          const stageNames = ["Baby", "Kid", "Teen", "Adult"];
+          const newStageName = stageNames[result.pet.stage] ?? "new stage";
+          setEvolutionModal({ petName: result.pet.name, stageName: newStageName });
         }
         if (result.leveledUp) {
           toast({ title: `Level Up! Now Lv ${result.pet.level}`, duration: 2500 });
@@ -663,6 +662,57 @@ export default function GameHome() {
       </div>
 
       <BottomTabNav />
+
+      {/* Evolution achieved overlay */}
+      {evolutionModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          data-testid="evolution-modal"
+        >
+          <div className="relative max-w-xs w-full mx-4">
+            {/* Burst glow */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-400 to-pink-400 opacity-30 blur-2xl scale-110" />
+            <div className="relative bg-background rounded-2xl shadow-2xl p-7 flex flex-col items-center gap-4 text-center border border-primary/20">
+              {/* Animated star burst */}
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(135deg, #8B5CF6, #EC4899)",
+                  animation: "petEvolveBurst 0.9s ease-in-out",
+                }}
+              >
+                <Sparkles size={40} className="text-white" />
+              </div>
+              <div>
+                <p
+                  className="text-2xl font-black text-foreground"
+                  style={{ fontFamily: "Outfit, sans-serif" }}
+                >
+                  Evolution!
+                </p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  <span className="font-semibold text-foreground">{evolutionModal.petName}</span> grew into a{" "}
+                  <span
+                    className="font-bold"
+                    style={{ background: "linear-gradient(135deg,#8B5CF6,#EC4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+                  >
+                    {evolutionModal.stageName}
+                  </span>
+                  !
+                </p>
+              </div>
+              <AdSlot format="rectangle" />
+              <Button
+                className="w-full"
+                data-testid="button-evolution-continue"
+                onClick={() => setEvolutionModal(null)}
+              >
+                Amazing!
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
