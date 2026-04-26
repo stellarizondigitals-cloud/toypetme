@@ -79,7 +79,7 @@ export default function GameHome() {
     title: "Play Free Virtual Pet Game — No Sign-Up",
     description: "Adopt a free virtual pet in ToyPetMe! Feed, play, clean, and evolve your companion through 4 stages. No sign-up needed — play instantly in your browser.",
     canonicalPath: "/",
-    ogImage: "https://toypetme.replit.app/og-image.png",
+    ogImage: "https://toypetme.replit.app/og-image.svg",
   });
 
   useEffect(() => {
