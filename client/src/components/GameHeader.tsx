@@ -1,23 +1,22 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Flame, Coins, Settings, BookOpen, Sparkles, RotateCcw, X, HelpCircle } from "lucide-react";
+import {
+  Flame, Coins, Settings, BookOpen, Sparkles, RotateCcw, X, HelpCircle,
+  Utensils, Dumbbell, BedDouble, TrendingUp, AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadState } from "@/lib/gameStorage";
 
-interface GameHeaderProps {
-  onRefresh?: () => void;
-}
-
-const HOW_TO_PLAY = [
-  { icon: "🍖", title: "Feed your pet", desc: "Keep hunger high — pets get sad when hungry!" },
-  { icon: "🎮", title: "Play together", desc: "Boosts happiness and earns XP." },
-  { icon: "🛁", title: "Clean regularly", desc: "A clean pet is a healthy pet." },
-  { icon: "💤", title: "Let them sleep", desc: "Restores energy for more adventures." },
-  { icon: "⬆️", title: "Level up", desc: "Earn XP through actions to unlock evolution stages." },
-  { icon: "🎯", title: "Daily streak", desc: "Log in every day for bonus coins!" },
+const HOW_TO_PLAY: { Icon: typeof Utensils; title: string; desc: string }[] = [
+  { Icon: Utensils,    title: "Feed your pet",   desc: "Keep hunger high — pets get sad when hungry! (5 min cooldown)" },
+  { Icon: Dumbbell,    title: "Play together",    desc: "Boosts happiness and earns XP. (3 min cooldown)" },
+  { Icon: Sparkles,    title: "Clean regularly",  desc: "A clean pet is a healthy pet. (10 min cooldown)" },
+  { Icon: BedDouble,   title: "Let them sleep",   desc: "Restores energy for more adventures. (15 min cooldown)" },
+  { Icon: TrendingUp,  title: "Level up",         desc: "Earn XP through actions to evolve through Baby → Kid → Teen → Adult." },
+  { Icon: Flame,       title: "Daily streak",     desc: "Log in every day for bonus coins — bigger bonuses at streak milestones!" },
 ];
 
-export default function GameHeader({ onRefresh }: GameHeaderProps) {
+export default function GameHeader() {
   const state = loadState();
   const activePet = state.pets.find((p) => p.id === state.activePetId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -29,6 +28,7 @@ export default function GameHeader({ onRefresh }: GameHeaderProps) {
     localStorage.removeItem("toypetme_v2");
     localStorage.removeItem("toypetme_accessories_v1");
     localStorage.removeItem("toypetme_dressup_v1");
+    localStorage.removeItem("toypetme_onboard");
     window.location.href = "/";
   };
 
@@ -74,7 +74,6 @@ export default function GameHeader({ onRefresh }: GameHeaderProps) {
               </div>
             )}
 
-            {/* Settings gear */}
             <Button
               size="icon"
               variant="ghost"
@@ -90,13 +89,7 @@ export default function GameHeader({ onRefresh }: GameHeaderProps) {
       {/* Settings dropdown */}
       {menuOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setMenuOpen(false)}
-          />
-
-          {/* Menu panel */}
+          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
           <div className="fixed top-14 right-2 z-50 w-56 rounded-md bg-background border border-border shadow-lg">
             <div className="p-1">
               <button
@@ -154,12 +147,14 @@ export default function GameHeader({ onRefresh }: GameHeaderProps) {
               </Button>
             </div>
             <div className="p-5 flex flex-col gap-3">
-              {HOW_TO_PLAY.map((tip) => (
-                <div key={tip.title} className="flex items-start gap-3">
-                  <span className="text-xl leading-none mt-0.5">{tip.icon}</span>
+              {HOW_TO_PLAY.map(({ Icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Icon size={15} className="text-primary" strokeWidth={2} />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{tip.title}</p>
-                    <p className="text-xs text-muted-foreground">{tip.desc}</p>
+                    <p className="text-sm font-semibold text-foreground">{title}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -178,7 +173,9 @@ export default function GameHeader({ onRefresh }: GameHeaderProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-background rounded-xl border border-border w-full max-w-sm shadow-xl">
             <div className="p-6 text-center">
-              <div className="text-4xl mb-3 select-none">⚠️</div>
+              <div className="w-14 h-14 rounded-xl bg-destructive/10 mx-auto flex items-center justify-center mb-4">
+                <AlertTriangle size={28} className="text-destructive" strokeWidth={1.5} />
+              </div>
               <h2 className="font-bold text-foreground text-lg mb-2">Reset All Data?</h2>
               <p className="text-sm text-muted-foreground mb-6">
                 This will permanently delete all your pets, coins, achievements, and progress. This cannot be undone.

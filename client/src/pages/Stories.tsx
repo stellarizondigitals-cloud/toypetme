@@ -6,6 +6,7 @@ import BottomTabNav from "@/components/BottomTabNav";
 import AdSlot from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { BookOpen, Heart } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 interface StoryData {
   species: string;
@@ -71,6 +72,11 @@ const STORIES: StoryData[] = [
 ];
 
 export default function Stories() {
+  usePageMeta({
+    title: "Pet Stories & Lore",
+    description: "Read the origin stories of ToyPetMe's 5 magical pet species — Mystic Cat, Star Pup, Fire Drake, Moon Bunny, and Crystal Axolotl. Discover their ancient lore!",
+    canonicalPath: "/stories",
+  });
   const [, setLocation] = useLocation();
 
   return (

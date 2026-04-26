@@ -26,6 +26,7 @@ import {
   Plus, Share2, Trophy,
   Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils,
 } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 type Screen = "loading" | "onboard" | "create" | "game" | "daily";
 
@@ -74,6 +75,11 @@ const STAGE_MILESTONES = [
 const ONBOARD_KEY = "toypetme_onboard";
 
 export default function GameHome() {
+  usePageMeta({
+    title: "Play Free Virtual Pet Game — No Sign-Up",
+    description: "Adopt a free virtual pet in ToyPetMe! Feed, play, clean, and evolve your companion through 4 stages. No sign-up needed — play instantly in your browser.",
+    canonicalPath: "/",
+  });
   const [state, setState] = useState<GameState>(() => loadState());
   const [screen, setScreen] = useState<Screen>("loading");
   const [actingAction, setActingAction] = useState<string | null>(null);

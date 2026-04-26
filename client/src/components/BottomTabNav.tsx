@@ -1,13 +1,13 @@
 import { useLocation, Link } from "wouter";
-import { Home, Grid3X3, Gamepad2, Trophy, Star } from "lucide-react";
+import { Home, Gamepad2, BookOpen, Sparkles, Star } from "lucide-react";
 import AdSlot from "@/components/AdSlot";
 
 const tabs = [
-  { path: "/", icon: Home, label: "Home" },
-  { path: "/collection", icon: Grid3X3, label: "Pets" },
-  { path: "/minigames", icon: Gamepad2, label: "Games" },
-  { path: "/leaderboard", icon: Trophy, label: "Ranks" },
-  { path: "/achievements", icon: Star, label: "Awards" },
+  { path: "/",            icon: Home,     label: "Home"    },
+  { path: "/minigames",   icon: Gamepad2, label: "Games"   },
+  { path: "/stories",     icon: BookOpen, label: "Stories" },
+  { path: "/dress-up",    icon: Sparkles, label: "Dress Up" },
+  { path: "/achievements",icon: Star,     label: "Awards"  },
 ];
 
 export default function BottomTabNav() {
@@ -36,7 +36,7 @@ export default function BottomTabNav() {
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              data-testid={`nav-${label.toLowerCase()}`}
+              data-testid={`nav-${label.toLowerCase().replace(" ", "-")}`}
             >
               <Icon
                 size={20}

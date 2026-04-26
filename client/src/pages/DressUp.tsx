@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import PetDisplay from "@/components/PetDisplay";
 import { loadState } from "@/lib/gameStorage";
 import { Sparkles, ArrowLeft, Check } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 const STORAGE_KEY = "toypetme_dressup_v1";
 
@@ -58,6 +59,11 @@ function saveAccessories(petId: string, acc: Accessories) {
 }
 
 export default function DressUp() {
+  usePageMeta({
+    title: "Dress Up Your Pet",
+    description: "Customize your ToyPetMe virtual pet with hats, accessories, and backgrounds. Mix and match to create a unique look for your companion!",
+    canonicalPath: "/dress-up",
+  });
   const [, setLocation] = useLocation();
   const state = loadState();
   const pet = state.pets.find((p) => p.id === state.activePetId) ?? state.pets[0];

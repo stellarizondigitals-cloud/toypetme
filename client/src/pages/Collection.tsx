@@ -9,8 +9,14 @@ import Footer from "@/components/Footer";
 import { loadState, applyDecay, getHealth } from "@/lib/gameStorage";
 import { PET_SPECIES, getStageName } from "@/lib/petData";
 import { Zap, Heart, Utensils, Droplets, Crown } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export default function Collection() {
+  usePageMeta({
+    title: "Pet Collection & Species Guide",
+    description: "Browse all 5 virtual pet species in ToyPetMe — Mystic Cat, Star Pup, Fire Drake, Moon Bunny, and Crystal Axolotl. Discover their unique stats and evolution stages.",
+    canonicalPath: "/collection",
+  });
   const state = useMemo(() => loadState(), []);
   const ownedSpecies = new Set(state.pets.map((p) => p.species));
 

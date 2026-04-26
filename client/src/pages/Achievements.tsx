@@ -8,8 +8,14 @@ import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
 import { Lock, CheckCircle } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export default function Achievements() {
+  usePageMeta({
+    title: "Achievements & Badges",
+    description: "Track your ToyPetMe achievements — 27 badges to unlock by caring for pets, playing mini-games, and maintaining daily streaks.",
+    canonicalPath: "/achievements",
+  });
   const state = useMemo(() => loadState(), []);
   const unlockedIds = new Set(state.achievements.map((a) => a.id));
   const unlockedCount = unlockedIds.size;

@@ -8,8 +8,14 @@ import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
 import { Trophy, Zap, Brain, ChefHat, Star } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export default function Leaderboard() {
+  usePageMeta({
+    title: "Rankings & High Scores",
+    description: "See your ToyPetMe high scores for Tap Rush, Memory Match, and Feed Frenzy. Track your virtual pet's level, stats, and achievements.",
+    canonicalPath: "/leaderboard",
+  });
   const state = useMemo(() => loadState(), []);
   const activePet = state.pets.find((p) => p.id === state.activePetId) ?? state.pets[0];
   const highestLevel = activePet?.level ?? 0;
