@@ -5,7 +5,7 @@ import PetDisplay from "@/components/PetDisplay";
 import ActionButtons from "@/components/ActionButtons";
 import StatsPanel from "@/components/StatsPanel";
 import BottomTabNav from "@/components/BottomTabNav";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -615,6 +615,9 @@ export default function GameHome() {
           />
         )}
 
+        {/* Mid-game in-content ad — between actions and guide (high viewability) */}
+        <InContentAd format="rectangle" />
+
         {/* ── Quick Start Guide ── always visible card */}
         <Card data-testid="quick-guide-card">
           <CardContent className="p-4 space-y-3">
@@ -744,7 +747,6 @@ export default function GameHome() {
                   !
                 </p>
               </div>
-              <AdSlot format="rectangle" />
               <Button
                 className="w-full"
                 data-testid="button-evolution-continue"

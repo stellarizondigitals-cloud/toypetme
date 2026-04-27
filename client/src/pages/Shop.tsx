@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/lib/usePageMeta";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import BottomTabNav from "@/components/BottomTabNav";
 
@@ -212,6 +212,9 @@ export default function Shop() {
                 </p>
               </div>
             </div>
+
+            {/* In-content ad between Premium and Coin Packs */}
+            <InContentAd format="rectangle" />
 
             {/* ── COIN PACKS ── */}
             <div className="mb-2">

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { loadState, applyDecay, getHealth } from "@/lib/gameStorage";
 import { PET_SPECIES, getStageName } from "@/lib/petData";
@@ -107,6 +107,9 @@ export default function Collection() {
             </div>
           </section>
         )}
+
+        {/* In-content ad between owned pets and species compendium */}
+        <InContentAd format="rectangle" />
 
         {/* Species Compendium */}
         <section>

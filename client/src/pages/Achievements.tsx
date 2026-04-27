@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
@@ -49,10 +49,13 @@ export default function Achievements() {
         <AdSlot format="banner" className="mx-auto mb-4" />
 
         <div className="grid gap-3">
-          {ACHIEVEMENTS.map((achievement) => {
+          {ACHIEVEMENTS.map((achievement, idx) => {
             const isUnlocked = unlockedIds.has(achievement.id);
             const unlockedData = state.achievements.find((a) => a.id === achievement.id);
             return (
+              <>
+              {/* Mid-list in-content ad — after the 9th item */}
+              {idx === 9 && <InContentAd key="mid-ad" format="rectangle" />}
               <Card
                 key={achievement.id}
                 className={`transition-all duration-300 ${
@@ -98,6 +101,7 @@ export default function Achievements() {
                   )}
                 </CardContent>
               </Card>
+              </>
             );
           })}
         </div>

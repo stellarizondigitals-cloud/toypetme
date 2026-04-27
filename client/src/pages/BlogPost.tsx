@@ -3,7 +3,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { getBlogArticle, BLOG_ARTICLES } from "@/lib/blogData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import BottomTabNav from "@/components/BottomTabNav";
 import { ArrowLeft, Clock, ChevronRight, BookOpen } from "lucide-react";
@@ -121,10 +121,11 @@ export default function BlogPost() {
           </p>
         </div>
 
-        {/* Article Sections */}
+        {/* Article Sections — with in-content ad after the 3rd section */}
         <div className="space-y-6 mb-6">
           {article.sections.map((section, i) => (
             <div key={i}>
+              {i === 3 && <InContentAd format="rectangle" />}
               <h2 className="text-base font-bold text-foreground mb-2">{section.heading}</h2>
               <div className="text-sm text-muted-foreground leading-relaxed space-y-2">
                 {section.body.split("\n").map((para, j) =>
@@ -172,6 +173,9 @@ export default function BlogPost() {
             </button>
           </Link>
         </div>
+
+        {/* In-content ad before related articles */}
+        <InContentAd format="banner" />
 
         {/* Related Articles */}
         {allRelated.length > 0 && (

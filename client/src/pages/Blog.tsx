@@ -4,7 +4,7 @@ import { BLOG_ARTICLES, BLOG_CATEGORIES } from "@/lib/blogData";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import BottomTabNav from "@/components/BottomTabNav";
 import { BookOpen, Clock, ChevronRight, ArrowLeft } from "lucide-react";
@@ -85,35 +85,40 @@ export default function Blog() {
           ))}
         </div>
 
-        {/* Article Grid */}
+        {/* Article Grid — with in-content ad after every 4th article */}
         <div className="space-y-3 mb-6">
-          {filtered.map((article) => (
-            <Link key={article.slug} href={`/blog/${article.slug}`}>
-              <Card className="cursor-pointer hover-elevate">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <BookOpen size={18} className="text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-[10px] py-0 h-4 shrink-0">
-                          {article.category}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground shrink-0">{article.readTime}</span>
+          {filtered.map((article, idx) => (
+            <div key={article.slug}>
+              {idx > 0 && idx % 4 === 0 && (
+                <InContentAd format="rectangle" />
+              )}
+              <Link href={`/blog/${article.slug}`}>
+                <Card className="cursor-pointer hover-elevate">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                        <BookOpen size={18} className="text-violet-600 dark:text-violet-400" />
                       </div>
-                      <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 line-clamp-2">
-                        {article.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {article.intro}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="text-[10px] py-0 h-4 shrink-0">
+                            {article.category}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{article.readTime}</span>
+                        </div>
+                        <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 line-clamp-2">
+                          {article.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {article.intro}
+                        </p>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-2" />
                     </div>
-                    <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-2" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
           ))}
         </div>
 

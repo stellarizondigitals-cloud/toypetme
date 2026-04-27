@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { loadState } from "@/lib/gameStorage";
 import { ACHIEVEMENTS } from "@/lib/petData";
@@ -96,6 +96,9 @@ export default function Leaderboard() {
           </Card>
         )}
 
+        {/* In-content ad — between player card and game scores */}
+        <InContentAd format="rectangle" />
+
         {/* Game Scores */}
         <section className="mb-4">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -127,6 +130,9 @@ export default function Leaderboard() {
             })}
           </div>
         </section>
+
+        {/* In-content ad — between game scores and achievements */}
+        <InContentAd format="banner" />
 
         {/* Recent achievements */}
         <section className="mb-4">

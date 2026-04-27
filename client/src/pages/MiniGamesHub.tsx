@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd, AdDivider } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { loadState, saveState, updateHighScore } from "@/lib/gameStorage";
 import { useToast } from "@/hooks/use-toast";
@@ -495,10 +495,13 @@ export default function MiniGamesHub() {
         </div>
         <AdSlot format="banner" className="mx-auto mb-4" />
         <div className="grid gap-4">
-          {GAMES.map(({ id, name, desc, icon: Icon, color }) => {
+          {GAMES.map(({ id, name, desc, icon: Icon, color }, idx) => {
             const best = lastScores[id!] ?? 0;
             return (
-              <Card key={id} className="overflow-hidden hover-elevate" data-testid={`game-card-${id}`}>
+              <div key={id}>
+                {/* In-content ad between game 1 and game 2 */}
+                {idx === 1 && <InContentAd format="banner" />}
+              <Card className="overflow-hidden hover-elevate" data-testid={`game-card-${id}`}>
                 <CardContent className="p-0">
                   <div className={`h-2 bg-gradient-to-r ${color}`} />
                   <div className="p-4 flex items-center gap-4">
@@ -521,6 +524,7 @@ export default function MiniGamesHub() {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             );
           })}
         </div>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import { BookOpen, Heart, ArrowLeft } from "lucide-react";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -220,11 +220,9 @@ export default function Stories() {
         <div className="flex flex-col gap-5">
           {STORIES.map((story, idx) => (
             <div key={story.slug}>
-              {/* Ad between every card (after the first) */}
-              {idx > 0 && (
-                <div className="mb-5">
-                  <AdSlot format="rectangle" className="mx-auto" />
-                </div>
+              {/* In-content ad after every 2nd card (approved frequency) */}
+              {idx > 0 && idx % 2 === 0 && (
+                <InContentAd format="rectangle" />
               )}
 
               <Card className="overflow-hidden" data-testid={`story-card-${story.species}`}>

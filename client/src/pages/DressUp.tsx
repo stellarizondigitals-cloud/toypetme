@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import GameHeader from "@/components/GameHeader";
 import BottomTabNav from "@/components/BottomTabNav";
-import AdSlot from "@/components/AdSlot";
+import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
 import PetDisplay from "@/components/PetDisplay";
 import type { DressUpState } from "@/components/PetDisplay";
@@ -201,6 +201,9 @@ export default function DressUp() {
 
         {/* Main content column */}
         <div className="flex-1 min-w-0">
+          {/* Top banner ad */}
+          <AdSlot format="banner" className="mx-auto mb-3" />
+
           {/* Header row */}
           <div className="flex items-center gap-3 mb-4 flex-wrap gap-y-2">
             <Button variant="ghost" size="default" className="gap-2" onClick={() => setLocation("/")} data-testid="btn-back-dressup">
