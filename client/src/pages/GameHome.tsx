@@ -24,7 +24,7 @@ import {
 import { PET_SPECIES, PET_NAME_SUGGESTIONS } from "@/lib/petData";
 import {
   Plus, Share2, Trophy,
-  Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils, Sparkles,
+  Heart, Gamepad2, TrendingUp, ChevronDown, ChevronUp, Utensils, Sparkles, Crown,
 } from "lucide-react";
 import { usePageMeta } from "@/lib/usePageMeta";
 
@@ -615,6 +615,51 @@ export default function GameHome() {
           />
         )}
 
+        {/* ── Quick Start Guide ── always visible card */}
+        <Card data-testid="quick-guide-card">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm font-black text-foreground">How to Play</p>
+              <span className="text-[11px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
+                Free · No sign-up needed
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Feed", rule: "Restores Hunger · 5 min cooldown" },
+                { label: "Play", rule: "Boosts Happiness · 3 min cooldown" },
+                { label: "Clean", rule: "Cleans pet · 10 min cooldown" },
+                { label: "Sleep", rule: "Recovers Energy · 15 min cooldown" },
+              ].map(({ label, rule }) => (
+                <div key={label} className="bg-muted/50 rounded-lg px-3 py-2">
+                  <p className="text-xs font-black text-foreground">{label}</p>
+                  <p className="text-[11px] text-muted-foreground">{rule}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Keep all 4 stats high to earn XP and coins. Level up to evolve through{" "}
+              <span className="font-semibold text-foreground">Baby → Kid → Teen → Adult</span>.
+              Log in daily to grow your streak and earn bonus coins!
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setLocation("/shop")}
+                data-testid="button-guide-premium"
+              >
+                <Crown size={12} className="text-amber-500" />
+                Premium — £0.99 one-time
+              </Button>
+              <p className="text-[11px] text-muted-foreground">Bonus XP · exclusive cosmetics · gold badge</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <AdSlot format="rectangle" className="mx-auto" />
+
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -649,8 +694,6 @@ export default function GameHome() {
             </Button>
           )}
         </div>
-
-        <AdSlot format="rectangle" className="mx-auto" />
 
         <div className="text-center py-2">
           <p className="text-xs text-muted-foreground">

@@ -166,32 +166,110 @@ export default function GameHeader() {
 
       {/* How to Play modal */}
       {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-background rounded-xl border border-border w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-              <h2 className="font-bold text-foreground text-lg" style={{ fontFamily: "Outfit, sans-serif" }}>
-                How to Play
-              </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div
+            className="bg-background rounded-xl border border-border w-full max-w-sm shadow-2xl overflow-y-auto"
+            style={{ maxHeight: "92vh" }}
+            data-testid="how-to-play-modal"
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border"
+              style={{ background: "linear-gradient(135deg,#EDE9FE,#FCE7F3)" }}
+            >
+              <div>
+                <h2 className="font-black text-foreground text-xl" style={{ fontFamily: "Outfit, sans-serif" }}>
+                  How to Play
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Free forever · No sign-up · No email needed
+                </p>
+              </div>
               <Button size="icon" variant="ghost" onClick={() => setShowHelp(false)} data-testid="btn-close-help">
                 <X size={16} />
               </Button>
             </div>
-            <div className="p-5 flex flex-col gap-3">
+
+            {/* Game rules */}
+            <div className="px-5 pt-4 pb-2 flex flex-col gap-4">
+              <p className="text-sm font-bold text-foreground">
+                Your pet needs you every day! Keep all 4 stats high to earn coins and XP.
+              </p>
+
               {HOW_TO_PLAY.map(({ Icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Icon size={15} className="text-primary" strokeWidth={2} />
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon size={18} className="text-primary" strokeWidth={2} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{title}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
+                    <p className="text-sm font-black text-foreground">{title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{desc}</p>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Stats explained */}
+            <div className="mx-5 my-3 rounded-lg bg-muted/50 px-4 py-3 space-y-1.5">
+              <p className="text-xs font-black text-foreground uppercase tracking-wide">The 4 Stats — Keep them full!</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {[
+                  ["Hunger", "Falls over time — Feed regularly"],
+                  ["Happiness", "Drops when bored — Play often"],
+                  ["Energy", "Drains gradually — Let them sleep"],
+                  ["Cleanliness", "Gets dirty — Clean every day"],
+                ].map(([stat, rule]) => (
+                  <div key={stat}>
+                    <p className="text-xs font-bold text-foreground">{stat}</p>
+                    <p className="text-[11px] text-muted-foreground">{rule}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Evolution */}
+            <div className="mx-5 mb-3 rounded-lg bg-violet-50 dark:bg-violet-950/30 px-4 py-3">
+              <p className="text-xs font-black text-violet-700 dark:text-violet-300 uppercase tracking-wide mb-1">Evolution stages</p>
+              <div className="flex items-center justify-between text-center">
+                {[["Baby","Lv 1"],["Kid","Lv 5"],["Teen","Lv 15"],["Adult","Lv 30"]].map(([stage, lv]) => (
+                  <div key={stage}>
+                    <p className="text-xs font-black text-violet-700 dark:text-violet-300">{stage}</p>
+                    <p className="text-[10px] text-muted-foreground">{lv}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Premium upsell */}
+            {!hasPremium && (
+              <div
+                className="mx-5 mb-3 rounded-lg border border-yellow-400 px-4 py-3 space-y-1.5"
+                style={{ background: "linear-gradient(135deg,#FFFBEB,#FEF9C3)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown size={15} className="text-amber-500" />
+                  <p className="text-sm font-black text-amber-900">Want more? Upgrade for £0.99</p>
+                </div>
+                <p className="text-xs text-amber-800">
+                  One-time payment · No account · No subscription · Instant perks including bonus XP, exclusive
+                  cosmetics, double streak coins, and a gold badge on your pet.
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full mt-1 font-bold"
+                  style={{ background: "linear-gradient(90deg,#F59E0B,#EAB308)", color: "#78350F" }}
+                  onClick={() => { setShowHelp(false); setLocation("/shop"); }}
+                  data-testid="btn-help-go-premium"
+                >
+                  <Crown size={13} className="mr-1.5" />
+                  See Premium — £0.99 one-time
+                </Button>
+              </div>
+            )}
+
             <div className="px-5 pb-5">
-              <Button className="w-full" onClick={() => setShowHelp(false)} data-testid="btn-got-it">
-                Got it!
+              <Button className="w-full font-bold" onClick={() => setShowHelp(false)} data-testid="btn-got-it">
+                Got it — let's play!
               </Button>
             </div>
           </div>
