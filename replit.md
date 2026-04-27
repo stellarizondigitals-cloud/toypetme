@@ -73,6 +73,18 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - JSON-LD structured data (VideoGame schema)
 - Descriptive page titles and descriptions
 
+## Blog & SEO Content
+- `/blog` — `Blog.tsx` — Blog index with category filter (All / Guides / Tips & Tricks / News & Culture), featured article hero, article cards
+- `/blog/:slug` — `BlogPost.tsx` — Full article view with Article + FAQPage JSON-LD, related articles, CTA, FAQ section
+- `client/src/lib/blogData.ts` — 10 rich SEO articles covering: beginner guide, evolution guide, Tamagotchi history, tips, species guide, browser games 2025, mini-games guide, achievements guide, ToyPetMe vs Tamagotchi, virtual pets & child development
+
+## SEO
+- All URLs updated from `toypetme.replit.app` → `toypetme.com` in index.html, usePageMeta.ts, sitemap.xml, robots.txt
+- Enhanced meta keywords (30+ keyword phrases)
+- Structured data schemas: WebSite (with SearchAction), VideoGame, Organization, BreadcrumbList, FAQPage, HowTo, Article, ItemList
+- Sitemap includes all 25 pages including all blog articles and story pages with lastmod dates
+- robots.txt blocks /api/ and /checkout/ from crawlers
+
 ## Legal Pages
 - `/privacy` — Full Privacy Policy (GDPR, CCPA, AdSense compliant), under Stellarizon Digitals
 - `/terms` — Terms of Service

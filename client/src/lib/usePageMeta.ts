@@ -8,7 +8,7 @@ interface PageMetaOptions {
 }
 
 const SITE_NAME = "ToyPetMe";
-const BASE_URL = "https://toypetme.replit.app";
+const BASE_URL = "https://toypetme.com";
 const DEFAULT_OG_IMAGE = `${BASE_URL}/og-image.svg`;
 
 export function usePageMeta({ title, description, canonicalPath, ogImage }: PageMetaOptions) {

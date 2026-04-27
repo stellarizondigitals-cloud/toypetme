@@ -16,6 +16,8 @@ import CheckoutCancel from "@/pages/CheckoutCancel";
 import RefundPolicy from "@/pages/RefundPolicy";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import Terms from "@/pages/Terms";
+import Blog from "@/pages/Blog";
+import BlogPost from "@/pages/BlogPost";
 import NotFound from "@/pages/not-found";
 import CookieBanner from "@/components/CookieBanner";
 
@@ -38,6 +40,8 @@ export default function App() {
           <Route path="/refund-policy" component={RefundPolicy} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={Terms} />
+          <Route path="/blog/:slug" component={BlogPost} />
+          <Route path="/blog" component={Blog} />
           <Route component={NotFound} />
         </Switch>
         <CookieBanner />

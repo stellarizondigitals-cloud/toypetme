@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://toypetme.replit.app/sitemap.xml
+Sitemap: https://toypetme.com/sitemap.xml
+
+# Block search crawlers from checkout and admin paths
+Disallow: /checkout/
+Disallow: /api/

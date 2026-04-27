@@ -9,6 +9,8 @@ export default function Footer() {
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <Link href="/shop" className="hover:text-foreground transition-colors font-medium text-amber-600 dark:text-amber-400">Shop</Link>
           <span className="opacity-30">·</span>
+          <Link href="/blog" className="hover:text-foreground transition-colors font-medium text-violet-600 dark:text-violet-400">Blog</Link>
+          <span className="opacity-30">·</span>
           <Link href="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link>
           <span className="opacity-30">·</span>
           <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
