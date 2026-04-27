@@ -19,7 +19,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = await stripe.products.list({ active: true, limit: 20 });
       const prices = await stripe.prices.list({ active: true, limit: 50 });
 
+      const VALID_TYPES = ["premium", "coins_500", "coins_1500", "coins_5000"];
+
       const enriched = products.data
+        .filter((p) => VALID_TYPES.includes(p.metadata?.productType ?? ""))
         .map((p) => {
           const productPrices = prices.data.filter((pr) => pr.product === p.id);
           return productPrices.map((pr) => ({
