@@ -13,7 +13,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 export default function Achievements() {
   usePageMeta({
     title: "Achievements & Badges",
-    description: "Track your ToyPetMe achievements — 27 badges to unlock by caring for pets, playing mini-games, and maintaining daily streaks.",
+    description: "Track all 40 ToyPetMe achievements — unlock badges by caring for your virtual pet, playing 8 mini-games, reaching evolution stages, and keeping daily streaks.",
     canonicalPath: "/achievements",
   });
   const state = useMemo(() => loadState(), []);

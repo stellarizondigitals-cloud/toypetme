@@ -76,10 +76,10 @@ const ONBOARD_KEY = "toypetme_onboard";
 
 export default function GameHome() {
   usePageMeta({
-    title: "Play Free Virtual Pet Game — No Sign-Up",
-    description: "Adopt a free virtual pet in ToyPetMe! Feed, play, clean, and evolve your companion through 4 stages. No sign-up needed — play instantly in your browser.",
+    title: "Free Virtual Pet Game — Play Online Instantly, No Download",
+    description: "Adopt a free virtual pet at ToyPetMe.com! Feed, play, clean and evolve your digital companion through 4 evolution stages. Like Tamagotchi but free — no download, no sign-up, play instantly in your browser on mobile or desktop.",
     canonicalPath: "/",
-    ogImage: "https://toypetme.replit.app/og-image.svg",
+    ogImage: "https://toypetme.com/og-image.svg",
   });
 
   useEffect(() => {
