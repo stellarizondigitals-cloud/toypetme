@@ -1,0 +1,27 @@
+{
+  "name": "ToyPetMe — Free Virtual Pet Game",
+  "short_name": "ToyPetMe",
+  "description": "Adopt and raise adorable virtual pets in your browser. No download, no sign-up needed!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f3ff",
+  "theme_color": "#8B5CF6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en",
+  "scope": "/"
+}

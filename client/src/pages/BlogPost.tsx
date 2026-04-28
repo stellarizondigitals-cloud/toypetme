@@ -45,14 +45,22 @@ export default function BlogPost() {
     description: article.metaDescription,
     datePublished: article.date,
     dateModified: article.date,
+    image: {
+      "@type": "ImageObject",
+      url: "https://toypetme.com/og-image.svg",
+      width: 1200,
+      height: 630,
+    },
     author: { "@type": "Organization", name: "ToyPetMe", url: "https://toypetme.com" },
     publisher: {
       "@type": "Organization",
       name: "ToyPetMe",
-      logo: { "@type": "ImageObject", url: "https://toypetme.com/og-image.svg" },
+      logo: { "@type": "ImageObject", url: "https://toypetme.com/og-image.svg", width: 600, height: 60 },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": `https://toypetme.com/blog/${article.slug}` },
     keywords: article.keywords.join(", "),
+    inLanguage: "en",
+    isAccessibleForFree: true,
   };
 
   const faqJsonLd = article.faq

@@ -1,9 +1,16 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { usePageMeta } from "@/lib/usePageMeta";
 
 export default function PrivacyPolicy() {
-  const updated = "April 15, 2025";
+  usePageMeta({
+    title: "Privacy Policy",
+    description: "ToyPetMe Privacy Policy — how we handle your data, cookies, Google AdSense, GDPR and CCPA rights. Operated by Stellarizon Digitals.",
+    canonicalPath: "/privacy",
+  });
+
+  const updated = "April 26, 2026";
   const company = "Stellarizon Digitals";
   const contact = "legal@stellarizondigitals.com";
   const site = "ToyPetMe";

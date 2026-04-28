@@ -9,6 +9,16 @@ import { sql } from "drizzle-orm";
 
 const app = express();
 
+// Redirect www → non-www for canonical SEO
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const host = req.headers.host || "";
+  if (host.startsWith("www.")) {
+    const nonWww = host.slice(4);
+    return res.redirect(301, `https://${nonWww}${req.url}`);
+  }
+  next();
+});
+
 // CRITICAL: Stripe webhook MUST be registered before express.json() middleware
 app.post(
   "/api/stripe/webhook",
