@@ -54,7 +54,7 @@ export default function Achievements() {
             const unlockedData = state.achievements.find((a) => a.id === achievement.id);
             return (
               <div key={achievement.id}>
-              {idx === 9 && <InContentAd format="rectangle" className="mb-3" />}
+              {idx === 9 && <div className="mb-3"><InContentAd format="rectangle" /></div>}
               <Card
                 className={`transition-all duration-300 ${
                   isUnlocked
