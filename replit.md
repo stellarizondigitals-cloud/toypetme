@@ -30,7 +30,7 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 **Pages:**
 - `/` — `GameHome.tsx` — Main game screen (create pet / care for pet)
 - `/collection` — `Collection.tsx` — Pet collection + species compendium
-- `/minigames` — `MiniGamesHub.tsx` — 3 client-side mini-games (Tap Rush, Memory Match, Feed Frenzy with basket mechanic)
+- `/minigames` — `MiniGamesHub.tsx` — 8 client-side mini-games: Tap Rush (combo system), Memory Match, Feed Frenzy, Pet Jump (Flappy Bird), Whack-a-Pet (Whack-a-Mole), 2048 Pets, Snake Feast, Brick Breaker (Breakout). All earn coins. Ads between game cards and in every game view.
 - `/stories` — `Stories.tsx` — Pet lore/species story page (5 in-world stories with ads between every card)
 - `/stories/:slug` — `StoryDetail` (exported from Stories.tsx) — Per-species story page with unique SEO meta
 - `/dress-up` — `DressUp.tsx` — Full dress-up: 7 hats, 7 outfits, 5 accessories, 6 backgrounds — SVG-layered on pet; wide-screen sidebar ad
@@ -62,7 +62,7 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - **Action cooldowns:** Feed 5min, Play 3min, Clean 10min, Sleep 15min
 - **Daily streak:** Bonus coins each day, larger bonuses at streak milestones
 - **27 achievements** with rewards
-- **3 mini-games:** Tap Rush, Memory Match, Feed Frenzy — all fully client-side
+- **8 mini-games:** Tap Rush (with combo multiplier), Memory Match, Feed Frenzy, Pet Jump (Flappy Bird-inspired, canvas), Whack-a-Pet (Whack-a-Mole, DOM), 2048 Pets (merge tiles, arrow keys + swipe), Snake Feast (canvas, D-pad), Brick Breaker (Breakout, canvas) — all earn coins
 
 ### Monetization
 - Google AdSense slots in `AdSlot.tsx` — ready to activate by pasting Publisher ID in `client/index.html`
