@@ -40,7 +40,22 @@ export default function GameHeader() {
     <>
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14 gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            {/* Paw logo icon */}
+            <svg width="30" height="30" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="hdr-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#7C3AED"/>
+                  <stop offset="100%" stopColor="#A855F7"/>
+                </linearGradient>
+              </defs>
+              <rect width="64" height="64" rx="14" ry="14" fill="url(#hdr-bg)"/>
+              <ellipse cx="32" cy="40" rx="13" ry="11" fill="white"/>
+              <ellipse cx="18" cy="27" rx="6" ry="5.5" fill="white"/>
+              <ellipse cx="27" cy="21" rx="6" ry="5.5" fill="white"/>
+              <ellipse cx="37" cy="21" rx="6" ry="5.5" fill="white"/>
+              <ellipse cx="46" cy="27" rx="6" ry="5.5" fill="white"/>
+            </svg>
             <span
               className="text-xl font-black tracking-tight text-primary"
               style={{ fontFamily: "Outfit, sans-serif" }}
