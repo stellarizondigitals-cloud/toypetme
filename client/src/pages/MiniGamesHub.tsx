@@ -5,7 +5,7 @@ import BottomTabNav from "@/components/BottomTabNav";
 import GameHeader from "@/components/GameHeader";
 import AdSlot, { InContentAd } from "@/components/AdSlot";
 import Footer from "@/components/Footer";
-import { loadState, saveState, updateHighScore } from "@/lib/gameStorage";
+import { loadState, saveState, recordGameResult } from "@/lib/gameStorage";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/lib/usePageMeta";
 import {
@@ -15,21 +15,6 @@ import {
 
 type GameId = "tap" | "memory" | "catch" | "jump" | "whack" | "tiles" | "snake" | "breakout";
 type ActiveGame = null | GameId;
-
-// ─── COIN REWARD HELPER ──────────────────────────────────────────────────────
-function coinsForGame(game: string, score: number): number {
-  const calc: Record<string, (s: number) => number> = {
-    tap:      s => Math.floor(s / 4) + 2,
-    memory:   s => Math.floor(s / 8) + 3,
-    catch:    s => Math.floor(s / 4) + 2,
-    jump:     s => s * 4 + 2,
-    whack:    s => Math.floor(s / 6) + 2,
-    tiles:    s => Math.floor(s / 16) + 3,
-    snake:    s => Math.floor(s / 4) + 2,
-    breakout: s => Math.floor(s / 6) + 3,
-  };
-  return Math.min(40, calc[game]?.(score) ?? 2);
-}
 
 // ─── TAP RUSH ───────────────────────────────────────────────────────────────
 function TapRushGame({ onComplete }: { onComplete: (score: number) => void }) {
@@ -1157,20 +1142,41 @@ export default function MiniGamesHub() {
     canonicalPath: "/minigames",
   });
 
+  // Stable game-result handler — called exactly once per game session
   const handleComplete = useCallback((game: string, score: number) => {
     const state = loadState();
-    const newState = updateHighScore(state, game, score);
-    const coins = coinsForGame(game, score);
-    newState.coins = Math.min(9999, (newState.coins ?? 0) + coins);
-    saveState(newState);
-    setLastScores(newState.highScores);
-    const prev = state.highScores[game] ?? 0;
-    if (score > prev) {
-      toast({ title: `New High Score! 🏆 ${score}`, description: `+${coins} coins earned`, duration: 3500 });
+    const result = recordGameResult(state, game, score);
+    saveState(result.state);
+    setLastScores(result.state.highScores);
+
+    const achLine = result.newAchievements.length > 0
+      ? ` · ${result.newAchievements.length} achievement${result.newAchievements.length > 1 ? "s" : ""} unlocked!`
+      : "";
+
+    if (result.isNewHighScore) {
+      toast({
+        title: `New High Score! ${score}`,
+        description: `+${result.coinsEarned} coins · +${result.xpEarned} XP${achLine}`,
+        duration: 4000,
+      });
     } else {
-      toast({ title: `Score: ${score} (+${coins} coins)`, description: `Best: ${state.highScores[game] ?? score}`, duration: 2500 });
+      toast({
+        title: `Score: ${score} (+${result.coinsEarned} coins)`,
+        description: `Best: ${state.highScores[game] ?? score} · +${result.xpEarned} XP${achLine}`,
+        duration: 3000,
+      });
     }
   }, [toast]);
+
+  // Stable per-game onComplete refs — prevents double-firing when hub re-renders
+  const onCompleteTap      = useCallback((s: number) => handleComplete("tap",      s), [handleComplete]);
+  const onCompleteMemory   = useCallback((s: number) => handleComplete("memory",   s), [handleComplete]);
+  const onCompleteCatch    = useCallback((s: number) => handleComplete("catch",    s), [handleComplete]);
+  const onCompleteJump     = useCallback((s: number) => handleComplete("jump",     s), [handleComplete]);
+  const onCompleteWhack    = useCallback((s: number) => handleComplete("whack",    s), [handleComplete]);
+  const onCompleteTiles    = useCallback((s: number) => handleComplete("tiles",    s), [handleComplete]);
+  const onCompleteSnake    = useCallback((s: number) => handleComplete("snake",    s), [handleComplete]);
+  const onCompleteBreakout = useCallback((s: number) => handleComplete("breakout", s), [handleComplete]);
 
   if (activeGame) {
     const info = GAMES.find(g => g.id === activeGame)!;
@@ -1196,14 +1202,14 @@ export default function MiniGamesHub() {
           <AdSlot format="banner" className="mx-auto mb-4" />
           <Card>
             <CardContent className="p-2">
-              {activeGame === "tap"      && <TapRushGame      onComplete={(s) => handleComplete("tap", s)} />}
-              {activeGame === "memory"   && <MemoryMatchGame   onComplete={(s) => handleComplete("memory", s)} />}
-              {activeGame === "catch"    && <FeedFrenzyGame    onComplete={(s) => handleComplete("catch", s)} />}
-              {activeGame === "jump"     && <PetJumpGame       onComplete={(s) => handleComplete("jump", s)} />}
-              {activeGame === "whack"    && <WhackAPetGame     onComplete={(s) => handleComplete("whack", s)} />}
-              {activeGame === "tiles"    && <Game2048          onComplete={(s) => handleComplete("tiles", s)} />}
-              {activeGame === "snake"    && <SnakeFeastGame    onComplete={(s) => handleComplete("snake", s)} />}
-              {activeGame === "breakout" && <BrickBreakerGame  onComplete={(s) => handleComplete("breakout", s)} />}
+              {activeGame === "tap"      && <TapRushGame      onComplete={onCompleteTap} />}
+              {activeGame === "memory"   && <MemoryMatchGame   onComplete={onCompleteMemory} />}
+              {activeGame === "catch"    && <FeedFrenzyGame    onComplete={onCompleteCatch} />}
+              {activeGame === "jump"     && <PetJumpGame       onComplete={onCompleteJump} />}
+              {activeGame === "whack"    && <WhackAPetGame     onComplete={onCompleteWhack} />}
+              {activeGame === "tiles"    && <Game2048          onComplete={onCompleteTiles} />}
+              {activeGame === "snake"    && <SnakeFeastGame    onComplete={onCompleteSnake} />}
+              {activeGame === "breakout" && <BrickBreakerGame  onComplete={onCompleteBreakout} />}
             </CardContent>
           </Card>
           <AdSlot format="rectangle" className="mx-auto mt-4" />

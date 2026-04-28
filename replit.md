@@ -61,7 +61,7 @@ ToyPetMe is a free, viral-friendly virtual pet game inspired by Tamagotchi, deli
 - **Stat decay:** Hunger −2/hr, Happiness −1.5/hr, Energy −1/hr, Cleanliness −1/hr
 - **Action cooldowns:** Feed 5min, Play 3min, Clean 10min, Sleep 15min
 - **Daily streak:** Bonus coins each day, larger bonuses at streak milestones
-- **27 achievements** with rewards
+- **40 achievements** with rewards — including score milestones for all 8 mini-games + games-played milestones (1/10/50 games)
 - **8 mini-games:** Tap Rush (with combo multiplier), Memory Match, Feed Frenzy, Pet Jump (Flappy Bird-inspired, canvas), Whack-a-Pet (Whack-a-Mole, DOM), 2048 Pets (merge tiles, arrow keys + swipe), Snake Feast (canvas, D-pad), Brick Breaker (Breakout, canvas) — all earn coins
 
 ### Monetization

@@ -53,11 +53,9 @@ export default function Achievements() {
             const isUnlocked = unlockedIds.has(achievement.id);
             const unlockedData = state.achievements.find((a) => a.id === achievement.id);
             return (
-              <>
-              {/* Mid-list in-content ad — after the 9th item */}
-              {idx === 9 && <InContentAd key="mid-ad" format="rectangle" />}
+              <div key={achievement.id}>
+              {idx === 9 && <InContentAd format="rectangle" className="mb-3" />}
               <Card
-                key={achievement.id}
                 className={`transition-all duration-300 ${
                   isUnlocked
                     ? "border-primary/30 bg-gradient-to-r from-violet-50 to-pink-50"
@@ -101,7 +99,7 @@ export default function Achievements() {
                   )}
                 </CardContent>
               </Card>
-              </>
+              </div>
             );
           })}
         </div>

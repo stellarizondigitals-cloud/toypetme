@@ -39,6 +39,7 @@ export interface GameState {
   highScores: { [game: string]: number };
   tutorialDone: boolean;
   totalActions: number;
+  gamesPlayed: number;
   createdAt: number;
   lastShareDate: string;
 }
@@ -64,6 +65,40 @@ export const COOLDOWNS = {
   sleep: 15 * 60 * 1000, // 15 min
 };
 
+// Coin rewards for mini-game scores (capped at 40)
+export function coinsForGame(game: string, score: number): number {
+  const calc: Record<string, (s: number) => number> = {
+    tap:      s => Math.floor(s / 4) + 2,
+    memory:   s => Math.floor(s / 8) + 3,
+    catch:    s => Math.floor(s / 4) + 2,
+    jump:     s => s * 4 + 2,
+    whack:    s => Math.floor(s / 6) + 2,
+    tiles:    s => Math.floor(s / 16) + 3,
+    snake:    s => Math.floor(s / 4) + 2,
+    breakout: s => Math.floor(s / 6) + 3,
+  };
+  return Math.min(40, calc[game]?.(score) ?? 2);
+}
+
+// Achievement coin rewards lookup — mirrors ACHIEVEMENTS in petData.ts
+export const ACHIEVEMENT_REWARDS: Record<string, number> = {
+  first_action: 10, hungry_10: 20, hungry_50: 100, playful_10: 20, playful_50: 100,
+  clean_10: 20, first_evolution: 50, adult_stage: 200, level_5: 25, level_10: 50,
+  level_20: 150, level_30: 500, coins_500: 0, coins_1000: 50, actions_100: 100,
+  two_pets: 50, five_pets: 200, collector_3: 100, collector_all: 500, streak_3: 50, streak_7: 200,
+  // Mini-game score achievements
+  tap_score_10: 25, tap_score_50: 100,
+  memory_score_10: 25, memory_score_50: 100,
+  catch_score_10: 25, catch_score_50: 100,
+  jump_score_10: 25, jump_score_50: 100,
+  whack_score_10: 25, whack_score_50: 100,
+  tiles_score_10: 25, tiles_score_50: 100,
+  snake_score_10: 25, snake_score_50: 100,
+  breakout_score_10: 25, breakout_score_50: 100,
+  // Games played milestones
+  games_1: 20, games_10: 100, games_50: 300,
+};
+
 export function defaultState(): GameState {
   return {
     pets: [],
@@ -76,6 +111,7 @@ export function defaultState(): GameState {
     highScores: {},
     tutorialDone: false,
     totalActions: 0,
+    gamesPlayed: 0,
     createdAt: Date.now(),
     lastShareDate: "",
   };
@@ -86,6 +122,8 @@ export function loadState(): GameState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const state = JSON.parse(raw) as GameState;
+    // Backfill missing field for existing saves
+    if (state.gamesPlayed === undefined) state.gamesPlayed = 0;
     // Apply stat decay to all pets
     state.pets = state.pets.map(applyDecay);
     return state;
@@ -222,7 +260,7 @@ export function performAction(
     evolved = true;
   }
 
-  const newCoins = Math.min(9999, state.coins + coinsEarned);
+  const provisionalCoins = Math.min(9999, state.coins + coinsEarned);
   const newTotalXP = state.totalXP + xpEarned;
   const newTotalActions = state.totalActions + 1;
 
@@ -230,9 +268,15 @@ export function performAction(
 
   // Check achievements
   const newAchievements = checkAchievements(
-    { ...state, pets: newPets, coins: newCoins, totalXP: newTotalXP, totalActions: newTotalActions },
+    { ...state, pets: newPets, coins: provisionalCoins, totalXP: newTotalXP, totalActions: newTotalActions },
     pet, action, evolved, leveledUp
   ).filter((a) => !state.achievements.some((existing) => existing.id === a));
+
+  // Apply achievement reward coins
+  const achievementRewardCoins = newAchievements.reduce(
+    (sum, id) => sum + (ACHIEVEMENT_REWARDS[id] ?? 0), 0
+  );
+  const newCoins = Math.min(9999, provisionalCoins + achievementRewardCoins);
 
   const updatedState: GameState = {
     ...state,
@@ -248,7 +292,7 @@ export function performAction(
 
   return {
     state: updatedState,
-    result: { success: true, coinsEarned, xpEarned, leveledUp, evolved, pet, newAchievements },
+    result: { success: true, coinsEarned: coinsEarned + achievementRewardCoins, xpEarned, leveledUp, evolved, pet, newAchievements },
   };
 }
 
@@ -316,18 +360,95 @@ export function formatCooldown(ms: number): string {
   return `${Math.ceil(s / 60)}m`;
 }
 
+export interface GameResult {
+  state: GameState;
+  coinsEarned: number;
+  xpEarned: number;
+  isNewHighScore: boolean;
+  newAchievements: string[];
+}
+
+// Records a completed mini-game: updates high score, grants coins + XP,
+// advances pet level/stage, checks and rewards achievements. Call once per game.
+export function recordGameResult(
+  state: GameState,
+  game: string,
+  score: number
+): GameResult {
+  const prevBest = state.highScores[game] ?? 0;
+  const isNewHighScore = score > prevBest;
+
+  const newHighScores = isNewHighScore
+    ? { ...state.highScores, [game]: score }
+    : state.highScores;
+
+  // XP earned from playing (5–30 based on score)
+  const xpEarned = Math.min(30, Math.max(5, Math.floor(score / 5) + 5));
+
+  const newGamesPlayed = (state.gamesPlayed ?? 0) + 1;
+  const newTotalXP = state.totalXP + xpEarned;
+
+  // Apply XP to active pet (level up + evolve if needed)
+  let newPets = state.pets;
+  if (state.activePetId) {
+    newPets = state.pets.map((p) => {
+      if (p.id !== state.activePetId) return p;
+      let pet = { ...p, xp: p.xp + xpEarned };
+      while (pet.xp >= XP_TO_LEVEL(pet.level)) {
+        pet = { ...pet, xp: pet.xp - XP_TO_LEVEL(pet.level), level: pet.level + 1 };
+      }
+      const stageIdx = STAGE_LEVELS.findIndex((l) => pet.level < l) - 1;
+      const targetStage = stageIdx === -1 ? 3 : Math.max(0, stageIdx);
+      if (targetStage > pet.stage) pet = { ...pet, stage: targetStage };
+      return pet;
+    });
+  }
+
+  // Check achievements
+  const hasAch = (id: string) => state.achievements.some((a) => a.id === id);
+  const newAchievements: string[] = [];
+
+  // Score-based achievements
+  if (score >= 10 && !hasAch(`${game}_score_10`)) newAchievements.push(`${game}_score_10`);
+  if (score >= 50 && !hasAch(`${game}_score_50`)) newAchievements.push(`${game}_score_50`);
+
+  // Games played milestones
+  if (newGamesPlayed >= 1  && !hasAch("games_1"))  newAchievements.push("games_1");
+  if (newGamesPlayed >= 10 && !hasAch("games_10")) newAchievements.push("games_10");
+  if (newGamesPlayed >= 50 && !hasAch("games_50")) newAchievements.push("games_50");
+
+  // Game coins + achievement rewards so far
+  const gameCoins = coinsForGame(game, score);
+  const achCoinsPhase1 = newAchievements.reduce((sum, id) => sum + (ACHIEVEMENT_REWARDS[id] ?? 0), 0);
+  const provisionalCoins = Math.min(9999, state.coins + gameCoins + achCoinsPhase1);
+
+  // Coin milestone achievements (checked after adding coins)
+  if (provisionalCoins >= 500  && !hasAch("coins_500"))  newAchievements.push("coins_500");
+  if (provisionalCoins >= 1000 && !hasAch("coins_1000")) newAchievements.push("coins_1000");
+
+  const totalAchCoins = newAchievements.reduce((sum, id) => sum + (ACHIEVEMENT_REWARDS[id] ?? 0), 0);
+  const coinsEarned = gameCoins + totalAchCoins;
+  const finalCoins = Math.min(9999, state.coins + coinsEarned);
+
+  const finalState: GameState = {
+    ...state,
+    pets: newPets,
+    highScores: newHighScores,
+    gamesPlayed: newGamesPlayed,
+    totalXP: newTotalXP,
+    coins: finalCoins,
+    achievements: [
+      ...state.achievements,
+      ...newAchievements.map((id) => ({ id, unlockedAt: Date.now() })),
+    ],
+  };
+
+  return { state: finalState, coinsEarned, xpEarned, isNewHighScore, newAchievements };
+}
+
+// Legacy — kept for any external callers; prefer recordGameResult
 export function updateHighScore(state: GameState, game: string, score: number): GameState {
   const current = state.highScores[game] ?? 0;
   if (score <= current) return state;
-
-  const newAchievements = [...state.achievements];
-  const achievementId = `${game}_score_${score >= 50 ? "50" : score >= 20 ? "20" : "10"}`;
-  if (score >= 10 && !newAchievements.some((a) => a.id === `${game}_score_10`)) {
-    newAchievements.push({ id: `${game}_score_10`, unlockedAt: Date.now() });
-  }
-  if (score >= 50 && !newAchievements.some((a) => a.id === `${game}_score_50`)) {
-    newAchievements.push({ id: `${game}_score_50`, unlockedAt: Date.now() });
-  }
-
-  return { ...state, highScores: { ...state.highScores, [game]: score }, achievements: newAchievements };
+  return { ...state, highScores: { ...state.highScores, [game]: score } };
 }
