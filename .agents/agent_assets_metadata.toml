@@ -6,3 +6,9 @@ id = "yjMXzPE4pe-F3aBBfAJlV"
 uri = "file://client/public/logo-512.png"
 type = "image"
 title = "ToyPetMe Logo — 512×512 PNG (for AdSense upload)"
+
+[[outputs]]
+id = "sL_vKZcZbljCWSIqtygH2"
+uri = "file://client/public/android-chrome-192x192.png"
+type = "image"
+title = "android-chrome-192x192 — 192×192 PNG"
